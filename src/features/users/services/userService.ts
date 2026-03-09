@@ -1,10 +1,10 @@
-import apiClient from "../../../shared/api/apiClient";
+import apiClient from "@/shared/api/apiClient";
 
 import type {
   CreateUserRequest,
   CreateUserResponse,
   User
-} from "../types/user";
+} from "@/features/users/types/user";
 
 export const createUser = async (
   user: CreateUserRequest

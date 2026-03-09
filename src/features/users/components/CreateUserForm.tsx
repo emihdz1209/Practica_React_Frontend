@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useCreateUser } from "../hooks/useUsers";
+import { useCreateUser } from "@/features/users/hooks/useUsers";
 
 import styles from "./CreateUserForm.module.css";
 

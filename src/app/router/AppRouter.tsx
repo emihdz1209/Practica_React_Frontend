@@ -1,3 +1,4 @@
+/// src/app/router/AppRouter.tsx
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import { ROUTES } from "./routes";
@@ -8,6 +9,10 @@ import { CreateUserPage } from "@/features/users/pages/CreateUserPage";
 import { ProtectedRoute } from "./ProtectedRoute";
 
 import { NotFoundPage } from "@/shared/pages/NotFoundPage";
+
+import { CreateTaskPriorityPage } from "@/features/taskPriorities/pages/CreateTaskPriorityPage";
+
+
 
 export const AppRouter = () => {
   return (
@@ -23,6 +28,15 @@ export const AppRouter = () => {
               <CreateUserPage />
             </ProtectedRoute>
           }
+        />
+
+        <Route
+            path={ROUTES.priorities}
+            element={
+                <ProtectedRoute>
+                <CreateTaskPriorityPage />
+                </ProtectedRoute>
+            }
         />
 
         <Route path="/" element={<LoginPage />} />

@@ -20,7 +20,7 @@ export const getProjectProgress = async (
   projectId: string
 ): Promise<ProjectProgressResponse> => {
   const response = await apiClient.get<ProjectProgressResponse>(
-    `/api/v1/projects/${projectId}/progress`
+    `/api/projects/${projectId}/progress`
   );
 
   return response.data;

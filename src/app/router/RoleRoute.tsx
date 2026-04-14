@@ -1,8 +1,7 @@
 /// src/app/router/RoleRoute.tsx
+
 import { Navigate } from "react-router-dom";
-
 import { useAuth } from "@/features/auth/hooks/useAuth";
-
 import type { ReactNode } from "react";
 import type { Role } from "@/features/auth/types/auth";
 
@@ -14,7 +13,13 @@ interface Props {
 export const RoleRoute = ({ children, allowedRole }: Props) => {
   const { auth } = useAuth();
 
-  if (auth.user?.role !== allowedRole) {
+  // 🔐 Primero validar autenticación
+  if (!auth.user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // 🔐 Luego validar rol
+  if (auth.user.role !== allowedRole) {
     return <Navigate to="/" replace />;
   }
 

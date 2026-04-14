@@ -1,6 +1,8 @@
+/// src/app/router/routes.ts
+
 export const ROUTES = {
   login: "/login",
+  dashboard: "/",
   users: "/users",
-  priorities: "/priorities"
-
+  priorities: "/priorities",
 } as const;

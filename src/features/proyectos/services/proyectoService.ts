@@ -1,5 +1,12 @@
 import { apiClient } from "@/shared/api/apiClient";
-import type { Proyecto, CreateProyectoRequest } from "@/features/proyectos/types/proyecto";
+import type {
+  Proyecto,
+  CreateProyectoRequest,
+  Sprint,
+  SprintKpis,
+  DeveloperPerformance,
+  ProjectProgress,
+} from "@/features/proyectos/types/proyecto";
 
 export const getProyectosByTeam = async (teamId: string): Promise<Proyecto[]> => {
   const response = await apiClient.get<Proyecto[]>(`/api/teams/${teamId}/projects`);
@@ -19,5 +26,29 @@ export const createProyecto = async (
 
 export const getProyecto = async (projectId: string): Promise<Proyecto> => {
   const response = await apiClient.get<Proyecto>(`/api/projects/${projectId}`);
+  return response.data;
+};
+
+export const getProjectSprints = async (projectId: string): Promise<Sprint[]> => {
+  const response = await apiClient.get<Sprint[]>(`/api/projects/${projectId}/sprints`);
+  return response.data;
+};
+
+export const getSprintKpis = async (sprintId: string): Promise<SprintKpis> => {
+  const response = await apiClient.get<SprintKpis>(`/api/sprints/${sprintId}/kpis`);
+  return response.data;
+};
+
+export const getProjectProgress = async (projectId: string): Promise<ProjectProgress> => {
+  const response = await apiClient.get<ProjectProgress>(`/api/projects/${projectId}/progress`);
+  return response.data;
+};
+
+export const getDeveloperPerformance = async (
+  projectId: string
+): Promise<DeveloperPerformance[]> => {
+  const response = await apiClient.get<DeveloperPerformance[]>(
+    `/api/projects/${projectId}/developers/performance`
+  );
   return response.data;
 };

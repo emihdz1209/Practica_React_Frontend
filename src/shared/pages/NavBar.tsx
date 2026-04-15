@@ -32,7 +32,7 @@ export const NavBar = () => {
     navigate(ROUTES.login, { replace: true });
   };
 
-  const portal = ReactDOM.createPortal(
+  return (
     <>
       {/* Floating toggle button */}
       <button
@@ -94,9 +94,6 @@ export const NavBar = () => {
 
         <div className="nav-footer">MtdrSpring · v1.0</div>
       </div>
-    </>,
-    document.body
+    </>
   );
-
-  return portal;
 };

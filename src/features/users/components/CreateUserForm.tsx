@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { TextField, Button, CircularProgress } from "@mui/material";
 import { useCreateUser } from "@/features/users/hooks/useUsers";
 
-import styles from "./CreateUserForm.module.css";
+interface CreateUserFormProps {
+  onSuccess?: () => void;
+}
 
-export const CreateUserForm = () => {
+export const CreateUserForm = ({ onSuccess }: CreateUserFormProps) => {
   const { mutate, isPending } = useCreateUser();
 
   const [formData, setFormData] = useState({
@@ -16,7 +19,6 @@ export const CreateUserForm = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -25,57 +27,79 @@ export const CreateUserForm = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    mutate(formData);
+    mutate(formData, {
+      onSuccess: () => {
+        setFormData({
+          primerNombre: "",
+          apellido: "",
+          telefono: "",
+          email: "",
+          telegramId: "",
+        });
+        onSuccess?.();
+      },
+    });
   };
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit}>
-      <h2 className={styles.title}>Crear Usuario</h2>
+    <form onSubmit={handleSubmit} className="modal-form">
+      <div className="modal-form-row">
+        <TextField
+          name="primerNombre"
+          label="Nombre"
+          value={formData.primerNombre}
+          onChange={handleChange}
+          required
+          size="small"
+        />
+        <TextField
+          name="apellido"
+          label="Apellido"
+          value={formData.apellido}
+          onChange={handleChange}
+          required
+          size="small"
+        />
+      </div>
 
-      <input
-        className={styles.input}
-        name="primerNombre"
-        placeholder="Primer Nombre"
-        value={formData.primerNombre}
-        onChange={handleChange}
-      />
-
-      <input
-        className={styles.input}
-        name="apellido"
-        placeholder="Apellido"
-        value={formData.apellido}
-        onChange={handleChange}
-      />
-
-      <input
-        className={styles.input}
-        name="telefono"
-        placeholder="Teléfono"
-        value={formData.telefono}
-        onChange={handleChange}
-      />
-
-      <input
-        className={styles.input}
+      <TextField
         name="email"
-        placeholder="Email"
+        label="Correo electrónico"
+        type="email"
         value={formData.email}
         onChange={handleChange}
+        required
+        size="small"
+        fullWidth
       />
 
-      <input
-        className={styles.input}
-        name="telegramId"
-        placeholder="Telegram ID"
-        value={formData.telegramId}
-        onChange={handleChange}
-      />
+      <div className="modal-form-row">
+        <TextField
+          name="telefono"
+          label="Teléfono"
+          value={formData.telefono}
+          onChange={handleChange}
+          size="small"
+        />
+        <TextField
+          name="telegramId"
+          label="Telegram ID"
+          value={formData.telegramId}
+          onChange={handleChange}
+          required
+          size="small"
+        />
+      </div>
 
-      <button className={styles.button} type="submit" disabled={isPending}>
-        {isPending ? "Creando..." : "Crear Usuario"}
-      </button>
+      <Button
+        type="submit"
+        variant="contained"
+        className="AddButton"
+        disabled={isPending}
+        fullWidth
+      >
+        {isPending ? <CircularProgress size={18} /> : "Crear usuario"}
+      </Button>
     </form>
   );
 };

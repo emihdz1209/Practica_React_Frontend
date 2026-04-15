@@ -390,16 +390,12 @@ table tr:hover td {
 .tarea-delete-btn:active {
   transform: scale(0.98);
 }
-<<<<<<< Updated upstream
-.tarea-delete-btn svg  { font-size: 13px !important; }
-=======
 .tarea-delete-btn:hover {
   color: var(--danger);
 }
 .tarea-delete-btn svg {
   font-size: 13px !important;
 }
->>>>>>> Stashed changes
 
 /* ── Progress Bar ──────────────────────────────────────────────── */
 .progress-wrap {

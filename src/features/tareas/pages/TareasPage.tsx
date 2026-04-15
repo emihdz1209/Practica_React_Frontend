@@ -139,6 +139,8 @@ export const TareasPage = () => {
   const handleStatusChange = (tarea: Tarea, newEstadoId: number) =>
     statusMutation.mutate({ taskId: tarea.taskId, estadoId: newEstadoId });
 
+  const isSideModalOpen = Boolean(selectedTaskId);
+
   return (
     <div className="App">
       <NavBar />
@@ -158,63 +160,71 @@ export const TareasPage = () => {
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="filter-bar">
-        <span className="section-label" style={{ margin: 0 }}>Equipo</span>
-        <FormControl size="small" style={{ minWidth: 180 }}>
-          <Select
-            value={selectedTeamId}
-            displayEmpty
-            onChange={(e) => handleTeamChange(e.target.value as string)}
-          >
-            <MenuItem value="">
-              <em style={{ fontStyle: "normal", color: "#A1A1AA" }}>Seleccionar</em>
-            </MenuItem>
-            {(equipos || []).map((eq) => (
-              <MenuItem key={eq.teamId} value={eq.teamId}>{eq.nombre}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+      <div className={`tareas-layout ${isSideModalOpen ? "tareas-layout--with-panel" : ""}`}>
+        <div className="tareas-main">
+          <div className="tareas-board-container">
+            {/* Filters */}
+            <div className="filter-bar">
+              <span className="section-label" style={{ margin: 0 }}>Equipo</span>
+              <FormControl size="small" style={{ minWidth: 180 }}>
+                <Select
+                  value={selectedTeamId}
+                  displayEmpty
+                  onChange={(e) => handleTeamChange(e.target.value as string)}
+                >
+                  <MenuItem value="">
+                    <em style={{ fontStyle: "normal", color: "#A1A1AA" }}>Seleccionar</em>
+                  </MenuItem>
+                  {(equipos || []).map((eq) => (
+                    <MenuItem key={eq.teamId} value={eq.teamId}>{eq.nombre}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-        <span className="section-label" style={{ margin: 0 }}>Proyecto</span>
-        <FormControl size="small" style={{ minWidth: 180 }}>
-          <Select
-            value={selectedProjectId}
-            displayEmpty
-            disabled={!selectedTeamId}
-            onChange={(e) => setSelectedProjectId(e.target.value as string)}
-          >
-            <MenuItem value="">
-              <em style={{ fontStyle: "normal", color: "#A1A1AA" }}>Seleccionar</em>
-            </MenuItem>
-            {(proyectos || []).map((p) => (
-              <MenuItem key={p.projectId} value={p.projectId}>{p.nombre}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+              <span className="section-label" style={{ margin: 0 }}>Proyecto</span>
+              <FormControl size="small" style={{ minWidth: 180 }}>
+                <Select
+                  value={selectedProjectId}
+                  displayEmpty
+                  disabled={!selectedTeamId}
+                  onChange={(e) => setSelectedProjectId(e.target.value as string)}
+                >
+                  <MenuItem value="">
+                    <em style={{ fontStyle: "normal", color: "#A1A1AA" }}>Seleccionar</em>
+                  </MenuItem>
+                  {(proyectos || []).map((p) => (
+                    <MenuItem key={p.projectId} value={p.projectId}>{p.nombre}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-        {selectedProjectId && (
-          <span className="filter-count">
-            {(tareas || []).length} tarea{(tareas || []).length !== 1 ? "s" : ""}
-          </span>
-        )}
+              {selectedProjectId && (
+                <span className="filter-count">
+                  {(tareas || []).length} tarea{(tareas || []).length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+
+            {/* Kanban */}
+            {(lt || lp) ? (
+              <CircularProgress style={{ marginTop: 40 }} />
+            ) : !selectedProjectId ? (
+              <p style={{ color: "var(--text-3)", fontSize: "0.875rem", marginTop: 24 }}>
+                Selecciona un equipo y proyecto para ver las tareas.
+              </p>
+            ) : (
+              <TareaList
+                tareas={tareas || []}
+                onDelete={handleDelete}
+                onStatusChange={handleStatusChange}
+                onOpenDetails={handleOpenTaskDetails}
+              />
+            )}
+          </div>
+        </div>
+
+        <TareasModal taskId={selectedTaskId} onClose={handleCloseTaskDetails} />
       </div>
-
-      {/* Kanban */}
-      {(lt || lp) ? (
-        <CircularProgress style={{ marginTop: 40 }} />
-      ) : !selectedProjectId ? (
-        <p style={{ color: "var(--text-3)", fontSize: "0.875rem", marginTop: 24 }}>
-          Selecciona un equipo y proyecto para ver las tareas.
-        </p>
-      ) : (
-        <TareaList
-          tareas={tareas || []}
-          onDelete={handleDelete}
-          onStatusChange={handleStatusChange}
-          onOpenDetails={handleOpenTaskDetails}
-        />
-      )}
 
       {/* Create modal */}
       <AppModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Nueva tarea">
@@ -224,8 +234,6 @@ export const TareasPage = () => {
           prioridades={PRIORIDADES}
         />
       </AppModal>
-
-      <TareasModal taskId={selectedTaskId} onClose={handleCloseTaskDetails} />
     </div>
   );
 };

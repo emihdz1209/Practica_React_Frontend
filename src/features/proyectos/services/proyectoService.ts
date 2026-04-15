@@ -1,3 +1,5 @@
+/// src/features/proyectos/services/proyectoService.ts
+
 import { apiClient } from "@/shared/api/apiClient";
 import type {
   Proyecto,
@@ -27,6 +29,18 @@ export const createProyecto = async (
 export const getProyecto = async (projectId: string): Promise<Proyecto> => {
   const response = await apiClient.get<Proyecto>(`/api/projects/${projectId}`);
   return response.data;
+};
+
+export const updateProyecto = async (
+  projectId: string,
+  proyecto: CreateProyectoRequest
+): Promise<Proyecto> => {
+  const response = await apiClient.put<Proyecto>(`/api/projects/${projectId}`, proyecto);
+  return response.data;
+};
+
+export const deleteProyecto = async (projectId: string): Promise<void> => {
+  await apiClient.delete(`/api/projects/${projectId}`);
 };
 
 export const getProjectSprints = async (projectId: string): Promise<Sprint[]> => {

@@ -8,15 +8,26 @@ import {
   MenuItem,
   Select,
   FormControl,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import CloseIcon from "@mui/icons-material/Close";
 import { useEquipos } from "@/features/equipos/hooks/useEquipos";
-import { useProyectos, useCreateProyecto } from "@/features/proyectos/hooks/useProyectos";
+import {
+  useProyectos,
+  useCreateProyecto,
+  useUpdateProyecto,
+  useDeleteProyecto,
+} from "@/features/proyectos/hooks/useProyectos";
+import type { Proyecto } from "@/features/proyectos/types/proyecto";
 import { NavBar } from "@/shared/pages/NavBar";
 import { AppModal } from "@/shared/components/AppModal";
 import { ProjectDashboard } from "@/features/proyectos/components/ProjectDashboard";
 
-// ── Persistence helpers (same pattern as TareasPage) ────────────────────────
+// ── Persistence helpers ──────────────────────────────────────────────────────
 
 const TEAM_STORAGE_KEY = "proyectos.selectedTeamId";
 const PROJECT_STORAGE_KEY = "proyectos.selectedProjectId";
@@ -41,11 +52,260 @@ const persistStoredValue = (key: string, value: string): void => {
   }
 };
 
-// ── Constants ───────────────────────────────────────────────────────────────
+// ── Constants ────────────────────────────────────────────────────────────────
 
 const EMPTY = { nombre: "", descripcion: "", fechaInicio: "", fechaFin: "" };
 
-// ── Component ────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+const fmtDate = (str: string | null) =>
+  str ? new Date(str).toLocaleDateString("es-MX") : "—";
+
+/** Converts an ISO timestamp to the value required by datetime-local inputs */
+const toDatetimeLocal = (str: string | null): string => {
+  if (!str) return "";
+  // Slice to "YYYY-MM-DDTHH:mm"
+  return str.slice(0, 16);
+};
+
+const progressColor = (pct: number) =>
+  pct >= 75 ? "#16A34A" : pct >= 40 ? "#2563EB" : "#D97706";
+
+// ── ProjectDetailModal ───────────────────────────────────────────────────────
+
+interface DetailModalProps {
+  project: Proyecto;
+  onClose: () => void;
+  onProjectDeleted: () => void;
+  teamId: string;
+}
+
+const ProjectDetailModal = ({ project, onClose, onProjectDeleted, teamId }: DetailModalProps) => {
+  const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [form, setForm] = useState({
+    nombre: project.nombre,
+    descripcion: project.descripcion ?? "",
+    fechaInicio: toDatetimeLocal(project.fechaInicio),
+    fechaFin: toDatetimeLocal(project.fechaFin),
+  });
+
+  const updateMutation = useUpdateProyecto(teamId);
+  const deleteMutation = useDeleteProyecto(teamId);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.nombre.trim()) return;
+    updateMutation.mutate(
+      {
+        projectId: project.projectId,
+        data: {
+          nombre: form.nombre,
+          descripcion: form.descripcion,
+          fechaInicio: form.fechaInicio || null,
+          fechaFin: form.fechaFin || null,
+        },
+      },
+      {
+        onSuccess: () => {
+          setEditing(false);
+        },
+      }
+    );
+  };
+
+  const handleDelete = () => {
+    deleteMutation.mutate(project.projectId, {
+      onSuccess: () => {
+        onProjectDeleted();
+        onClose();
+      },
+    });
+  };
+
+  const pct = project.progreso || 0;
+
+  return (
+    <AppModal open onClose={onClose} title={editing ? "Editar proyecto" : project.nombre}>
+      {!editing ? (
+        /* ── Detail view ── */
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Progress */}
+          <div>
+            <span
+              style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase",
+                letterSpacing: "0.08em", color: "var(--text-3)" }}
+            >
+              Progreso
+            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+              <div className="progress-track" style={{ flex: 1 }}>
+                <div
+                  className="progress-fill"
+                  style={{ width: `${pct}%`, background: progressColor(pct) }}
+                />
+              </div>
+              <span style={{ fontWeight: 700, color: progressColor(pct), minWidth: 36 }}>
+                {pct}%
+              </span>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <span
+              style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase",
+                letterSpacing: "0.08em", color: "var(--text-3)" }}
+            >
+              Descripción
+            </span>
+            <p style={{ marginTop: 4, fontSize: "0.88rem", color: "var(--text-1)", lineHeight: 1.5 }}>
+              {project.descripcion || "Sin descripción"}
+            </p>
+          </div>
+
+          {/* Dates */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <span
+                style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase",
+                  letterSpacing: "0.08em", color: "var(--text-3)" }}
+              >
+                Fecha inicio
+              </span>
+              <p style={{ marginTop: 4, fontSize: "0.88rem", color: "var(--text-1)" }}>
+                {fmtDate(project.fechaInicio)}
+              </p>
+            </div>
+            <div>
+              <span
+                style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase",
+                  letterSpacing: "0.08em", color: "var(--text-3)" }}
+              >
+                Fecha fin
+              </span>
+              <p style={{ marginTop: 4, fontSize: "0.88rem", color: "var(--text-1)" }}>
+                {fmtDate(project.fechaFin)}
+              </p>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+            <Button
+              variant="outlined"
+              startIcon={<EditIcon />}
+              onClick={() => setEditing(true)}
+              size="small"
+            >
+              Editar
+            </Button>
+
+            {!confirmDelete ? (
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={() => setConfirmDelete(true)}
+                size="small"
+              >
+                Eliminar
+              </Button>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: "0.8rem", color: "var(--text-2)" }}>
+                  ¿Confirmar eliminación?
+                </span>
+                <Button
+                  variant="contained"
+                  color="error"
+                  size="small"
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isPending}
+                >
+                  {deleteMutation.isPending ? <CircularProgress size={14} /> : "Sí, eliminar"}
+                </Button>
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => setConfirmDelete(false)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* ── Edit form ── */
+        <form onSubmit={handleSave} className="modal-form">
+          <TextField
+            name="nombre"
+            label="Nombre del proyecto"
+            value={form.nombre}
+            onChange={handleChange}
+            required
+            size="small"
+            fullWidth
+          />
+          <TextField
+            name="descripcion"
+            label="Descripción"
+            value={form.descripcion}
+            onChange={handleChange}
+            multiline
+            rows={3}
+            size="small"
+            fullWidth
+          />
+          <div className="modal-form-row">
+            <TextField
+              name="fechaInicio"
+              label="Fecha inicio"
+              type="datetime-local"
+              value={form.fechaInicio}
+              onChange={handleChange}
+              size="small"
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+            <TextField
+              name="fechaFin"
+              label="Fecha fin"
+              type="datetime-local"
+              value={form.fechaFin}
+              onChange={handleChange}
+              size="small"
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <Button
+              type="submit"
+              variant="contained"
+              className="AddButton"
+              disabled={updateMutation.isPending}
+              fullWidth
+            >
+              {updateMutation.isPending ? <CircularProgress size={18} /> : "Guardar cambios"}
+            </Button>
+            <Tooltip title="Cancelar edición">
+              <IconButton onClick={() => setEditing(false)} size="small">
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </div>
+        </form>
+      )}
+    </AppModal>
+  );
+};
+
+// ── ProyectosPage ─────────────────────────────────────────────────────────────
 
 export const ProyectosPage = () => {
   const { data: equipos, isLoading: loadingEquipos } = useEquipos();
@@ -56,7 +316,8 @@ export const ProyectosPage = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
     () => readStoredValue(PROJECT_STORAGE_KEY)
   );
-  const [modalOpen, setModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [detailProject, setDetailProject] = useState<Proyecto | null>(null);
   const [form, setForm] = useState(EMPTY);
 
   const { data: proyectos, isLoading: loadingProyectos } = useProyectos(
@@ -117,18 +378,11 @@ export const ProyectosPage = () => {
       {
         onSuccess: () => {
           setForm(EMPTY);
-          setModalOpen(false);
+          setCreateModalOpen(false);
         },
       }
     );
   };
-
-  // ── Helpers ────────────────────────────────────────────────────────
-  const fmtDate = (str: string | null) =>
-    str ? new Date(str).toLocaleDateString("es-MX") : "—";
-
-  const progressColor = (pct: number) =>
-    pct >= 75 ? "#16A34A" : pct >= 40 ? "#2563EB" : "#D97706";
 
   const selectedProject = proyectos?.find((p) => p.projectId === selectedProjectId);
 
@@ -145,7 +399,7 @@ export const ProyectosPage = () => {
         <Button
           className="AddButton"
           startIcon={<AddIcon />}
-          onClick={() => setModalOpen(true)}
+          onClick={() => setCreateModalOpen(true)}
           disabled={!selectedTeamId}
         >
           Nuevo proyecto
@@ -232,7 +486,26 @@ export const ProyectosPage = () => {
                     key={p.projectId}
                     style={isActive ? { background: "var(--accent-subtle)" } : undefined}
                   >
-                    <td className="cell-primary">{p.nombre}</td>
+                    <td className="cell-primary">
+                      {/* Clickable name → opens detail modal */}
+                      <button
+                        onClick={() => setDetailProject(p)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          padding: 0,
+                          cursor: "pointer",
+                          fontWeight: 600,
+                          color: "var(--accent)",
+                          fontSize: "inherit",
+                          textDecoration: "underline",
+                          textDecorationStyle: "dotted",
+                          textUnderlineOffset: 3,
+                        }}
+                      >
+                        {p.nombre}
+                      </button>
+                    </td>
                     <td>{p.descripcion || "—"}</td>
                     <td>
                       <div className="progress-wrap">
@@ -276,7 +549,7 @@ export const ProyectosPage = () => {
 
       {/* Dashboard section */}
       {selectedProjectId && selectedProject && (
-        <div style={{ width: "100%"}}>
+        <div style={{ width: "100%" }}>
           <div className="divider" />
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
             <span className="section-label" style={{ margin: 0 }}>
@@ -298,8 +571,8 @@ export const ProyectosPage = () => {
 
       {/* Create project modal */}
       <AppModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
         title="Nuevo proyecto"
       >
         <form onSubmit={handleSubmit} className="modal-form">
@@ -353,6 +626,22 @@ export const ProyectosPage = () => {
           </Button>
         </form>
       </AppModal>
+
+      {/* Project detail / edit modal */}
+      {detailProject && (
+        <ProjectDetailModal
+          project={detailProject}
+          teamId={selectedTeamId}
+          onClose={() => setDetailProject(null)}
+          onProjectDeleted={() => {
+            // If the deleted project was the active dashboard, deselect it
+            if (detailProject.projectId === selectedProjectId) {
+              setSelectedProjectId("");
+            }
+            setDetailProject(null);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -1,7 +1,11 @@
+/// src/features/proyectos/hooks/useProyectos.ts
+
 import { useQuery, useMutation, useQueryClient, useQueries } from "@tanstack/react-query";
 import {
   getProyectosByTeam,
   createProyecto,
+  updateProyecto,
+  deleteProyecto,
   getProjectSprints,
   getSprintKpis,
   getProjectProgress,
@@ -41,6 +45,29 @@ export const useCreateProyecto = (teamId: string) => {
 
   return useMutation({
     mutationFn: (proyecto: CreateProyectoRequest) => createProyecto(teamId, proyecto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["proyectos", teamId] });
+    },
+  });
+};
+
+export const useUpdateProyecto = (teamId: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ projectId, data }: { projectId: string; data: CreateProyectoRequest }) =>
+      updateProyecto(projectId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["proyectos", teamId] });
+    },
+  });
+};
+
+export const useDeleteProyecto = (teamId: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (projectId: string) => deleteProyecto(projectId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["proyectos", teamId] });
     },

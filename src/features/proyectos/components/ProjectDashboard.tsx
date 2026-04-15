@@ -1,6 +1,6 @@
 /// src/features/proyectos/components/ProjectDashboard.tsx
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { CircularProgress, FormControl, MenuItem, Select } from "@mui/material";
 import ReactECharts from "echarts-for-react";
@@ -15,13 +15,60 @@ interface Props {
     projectId: string;
 }
 
+// ── Sprint persistence helpers ───────────────────────────────────────────────
+
+const sprintStorageKey = (projectId: string) => `dashboard.sprint.${projectId}`;
+
+const readStoredSprint = (projectId: string): string => {
+    try {
+        return localStorage.getItem(sprintStorageKey(projectId)) ?? "";
+    } catch {
+        return "";
+    }
+};
+
+const persistSprint = (projectId: string, sprintId: string): void => {
+    try {
+        if (sprintId) {
+            localStorage.setItem(sprintStorageKey(projectId), sprintId);
+        } else {
+            localStorage.removeItem(sprintStorageKey(projectId));
+        }
+    } catch {
+        // ignore
+    }
+};
+
+// ── Palette for stacked workload chart ──────────────────────────────────────
+
+const DEV_COLORS = [
+    "#2563eb", "#16a34a", "#d97706", "#7c3aed",
+    "#dc2626", "#0891b2", "#ea580c", "#65a30d",
+];
+
+// ── Component ────────────────────────────────────────────────────────────────
+
 export const ProjectDashboard = ({ projectId }: Props) => {
-    const [selectedSprintId, setSelectedSprintId] = useState<string>("");
+    const [selectedSprintId, setSelectedSprintId] = useState<string>(
+        () => readStoredSprint(projectId)
+    );
 
     const { data: sprints = [], isLoading: loadingSprints } = useProjectSprints(projectId);
     const { data: progressData } = useProjectProgress(projectId);
     const { data: devPerf = [], isLoading: loadingDevs } = useDeveloperPerformance(projectId);
     const sprintKpisQueries = useAllSprintKpis(sprints);
+
+    // Persist selected sprint whenever it changes
+    useEffect(() => {
+        persistSprint(projectId, selectedSprintId);
+    }, [projectId, selectedSprintId]);
+
+    // Validate stored sprint still belongs to this project
+    useEffect(() => {
+        if (!sprints.length || !selectedSprintId) return;
+        const exists = sprints.some((s) => s.sprintId === selectedSprintId);
+        if (!exists) setSelectedSprintId("");
+    }, [sprints, selectedSprintId]);
 
     const effectiveSprintId = selectedSprintId || sprints[0]?.sprintId || "";
     const selectedSprintIdx = sprints.findIndex((s) => s.sprintId === effectiveSprintId);
@@ -184,7 +231,6 @@ export const ProjectDashboard = ({ projectId }: Props) => {
     };
 
     // ── Chart: Multi-line — Productividad Histórica ──────────────────
-    // Collect all sprint names in order from devPerf
     const allSprintNames = Array.from(
         new Map(
         devPerf
@@ -209,40 +255,56 @@ export const ProjectDashboard = ({ projectId }: Props) => {
         })),
     };
 
-    // ── Chart: Heatmap — Carga de Trabajo ───────────────────────────
-    const heatmapData = devPerf.flatMap((dev, devIdx) =>
-        dev.historicoSprints.map((s) => {
-        const sprintIdx = allSprintNames.indexOf(s.sprintNombre);
-        return [sprintIdx, devIdx, s.horasReales];
-        })
+    // ── Chart: Stacked Bar — Carga de Trabajo (hrs por sprint) ──────
+    // Each developer is a series/color; label shows total on top of bar.
+    const workloadTotals = allSprintNames.map((sName) =>
+        devPerf.reduce((sum, dev) => {
+            const match = dev.historicoSprints.find((s) => s.sprintNombre === sName);
+            return sum + (match?.horasReales ?? 0);
+        }, 0)
     );
-    const maxHours = Math.max(...heatmapData.map((d) => d[2] as number), 1);
-    const heatmapOption = {
+
+    const workloadOption = {
         tooltip: {
-        formatter: (p: { data: number[] }) =>
-            `${devNames[p.data[1]]}<br/>${allSprintNames[p.data[0]]}: <b>${p.data[2]} hrs</b>`,
+            trigger: "axis",
+            axisPointer: { type: "shadow" },
+            formatter: (params: { seriesName: string; value: number; name: string }[]) => {
+                const total = workloadTotals[allSprintNames.indexOf(params[0]?.name)];
+                const rows = params
+                    .filter((p) => p.value > 0)
+                    .map((p) => `${p.seriesName}: <b>${p.value} hrs</b>`)
+                    .join("<br/>");
+                return `${params[0]?.name}<br/>${rows}<br/><b>Total: ${total} hrs</b>`;
+            },
         },
-        grid: { left: "0%", right: "5%", bottom: "20%", top: "5%", containLabel: true },
-        xAxis: { type: "category", data: allSprintNames, splitArea: { show: true } },
-        yAxis: { type: "category", data: devNames, splitArea: { show: true } },
-        visualMap: {
-        min: 0,
-        max: maxHours,
-        calculable: true,
-        orient: "horizontal",
-        left: "center",
-        bottom: 0,
-        inRange: { color: ["#eff6ff", "#2563eb"] },
-        textStyle: { fontSize: 10 },
-        },
-        series: [
-        {
-            type: "heatmap",
-            data: heatmapData,
-            label: { show: true, formatter: (p: { data: number[] }) => `${p.data[2]}h` },
-            emphasis: { itemStyle: { shadowBlur: 8, shadowColor: "rgba(0,0,0,0.3)" } },
-        },
-        ],
+        legend: { data: devNames, top: 0, textStyle: { fontSize: 11 } },
+        grid: { left: "3%", right: "4%", bottom: "8%", top: "36px", containLabel: true },
+        xAxis: { type: "category", data: allSprintNames },
+        yAxis: { type: "value", name: "hrs", nameTextStyle: { fontSize: 11 } },
+        series: devPerf.map((dev, idx) => ({
+            name: dev.nombre,
+            type: "bar",
+            stack: "total",
+            itemStyle: { color: DEV_COLORS[idx % DEV_COLORS.length] },
+            data: allSprintNames.map(
+                (sName) =>
+                    dev.historicoSprints.find((s) => s.sprintNombre === sName)?.horasReales ?? 0
+            ),
+            // Show total label only on the last (top) series
+            ...(idx === devPerf.length - 1
+                ? {
+                    label: {
+                        show: true,
+                        position: "top",
+                        formatter: (_p: { dataIndex: number }) =>
+                            `${workloadTotals[_p.dataIndex]}`,
+                        fontSize: 11,
+                        fontWeight: "bold",
+                        color: "#374151",
+                    },
+                  }
+                : {}),
+        })),
     };
 
     // ── Render ───────────────────────────────────────────────────────
@@ -364,7 +426,7 @@ export const ProjectDashboard = ({ projectId }: Props) => {
             </ChartCard>
         </div>
 
-        {/* Row 3: Multi-line + Heatmap */}
+        {/* Row 3: Multi-line + Workload Stacked Bars */}
         <div
             style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 8 }}
         >
@@ -377,8 +439,8 @@ export const ProjectDashboard = ({ projectId }: Props) => {
             </ChartCard>
 
             <ChartCard title="Carga de Trabajo (hrs por sprint)">
-            {heatmapData.length > 0 ? (
-                <ReactECharts option={heatmapOption} style={{ height: 280 }} />
+            {devPerf.length > 0 && allSprintNames.length > 0 ? (
+                <ReactECharts option={workloadOption} style={{ height: 280 }} />
             ) : (
                 <EmptyState />
             )}

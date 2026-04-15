@@ -1,4 +1,13 @@
-export type Role = "Manager" | "Developer";
+/// src/features/auth/types/auth.ts
+
+export interface LoginResponse {
+  token: string;
+  userId: string;
+  email: string;
+  rolId: number;
+}
+
+export type Role = "MANAGER" | "DEVELOPER";
 
 export interface LoginRequest {
   email: string;
@@ -25,7 +34,6 @@ export interface RegisterRequest {
 
 export interface AuthUser {
   userId: string;
-  rolId: number;
   email: string;
   role: Role;
 }

@@ -13,9 +13,13 @@ export interface CreateUserResponse {
 }
 
 export interface User {
+  userId: string;
   primerNombre: string;
   apellido: string;
   telefono: string;
   email: string;
   telegramId: string;
+  rolId: number;
+  estadoId: number;
+  managerId: string | null;
 }

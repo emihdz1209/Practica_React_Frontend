@@ -1,32 +1,20 @@
-import apiClient from "@/shared/api/apiClient";
+/// src/features/auth/services/authService.ts
 
-import type {
-	AuthUser,
-	LoginRequest,
-	LoginResponse,
-	RegisterRequest,
-	Role,
-} from "@/features/auth/types/auth";
-import { TOKEN_STORAGE_KEY } from "@/features/auth/constants/authStorage";
+import { apiClient } from "@/shared/api/apiClient";
+import type { LoginResponse } from "../types/auth";
 
-const mapRoleByRolId = (rolId: number): Role => {
-	return rolId === 1 ? "Manager" : "Developer";
-};
+interface LoginRequest {
+  email: string;
+  password: string;
+}
 
-export const login = async (credentials: LoginRequest): Promise<LoginResponse> => {
-	const response = await apiClient.post<LoginResponse>("/auth/login", credentials);
-	return response.data;
-};
+export const authService = {
+  async login({ email, password }: LoginRequest): Promise<LoginResponse> {
+    const { data } = await apiClient.post<LoginResponse>("/auth/login", {
+      email,
+      password,
+    });
 
-export const register = async (payload: RegisterRequest): Promise<void> => {
-	await apiClient.post("/auth/register", payload);
-};
-
-export const toAuthUser = (loginResponse: LoginResponse): AuthUser => {
-	return {
-		userId: loginResponse.userId,
-		email: loginResponse.email,
-		rolId: loginResponse.rolId,
-		role: mapRoleByRolId(loginResponse.rolId),
-	};
+    return data;
+  },
 };

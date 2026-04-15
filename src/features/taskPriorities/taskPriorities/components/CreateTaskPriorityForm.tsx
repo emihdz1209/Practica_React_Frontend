@@ -1,8 +1,6 @@
-import { useState } from "react";
-
-import { useCreateTaskPriority } from "../hooks/useTaskPriorities";
-
-import styles from "../../users/components/CreateUserForm.module.css";
+import { useState } from "react"
+import { useCreateTaskPriority } from "../hooks/useTaskPriorities"
+import styles from "./CreateTaskPriorityForm.module.css"
 
 export const CreateTaskPriorityForm = () => {
   const { mutate, isPending } = useCreateTaskPriority();

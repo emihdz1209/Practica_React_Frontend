@@ -1,12 +1,18 @@
-import { createContext, useState } from "react";
+/// src/features/auth/context/AuthContext.tsx
+
+import { createContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
 
-import type { AuthState, AuthUser } from "@/features/auth/types/auth";
-import { TOKEN_STORAGE_KEY } from "@/features/auth/constants/authStorage";
+import type {
+  AuthState,
+  AuthUser,
+  LoginResponse,
+  Role,
+} from "@/features/auth/types/auth";
 
 interface AuthContextType {
   auth: AuthState;
-  login: (user: AuthUser, token: string) => void;
+  login: (data: LoginResponse) => void;
   logout: () => void;
 }
 
@@ -18,19 +24,56 @@ interface Props {
   children: ReactNode;
 }
 
+const mapRole = (rolId: number): Role => {
+  switch (rolId) {
+    case 1:
+      return "MANAGER";
+    case 2:
+      return "DEVELOPER";
+    default:
+      return "DEVELOPER";
+  }
+};
+
 export const AuthProvider = ({ children }: Props) => {
   const [auth, setAuth] = useState<AuthState>({
     user: null,
     token: localStorage.getItem(TOKEN_STORAGE_KEY),
   });
 
-  const login = (user: AuthUser, token: string) => {
-    localStorage.setItem(TOKEN_STORAGE_KEY, token);
-    setAuth({ user, token });
+  // 🔄 Persistencia al recargar
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const user = localStorage.getItem("user");
+
+    if (token && user) {
+      setAuth({
+        token,
+        user: JSON.parse(user),
+      });
+    }
+  }, []);
+
+  const login = (data: LoginResponse) => {
+    const user: AuthUser = {
+      userId: data.userId,
+      email: data.email,
+      role: mapRole(data.rolId),
+    };
+
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(user));
+
+    setAuth({
+      token: data.token,
+      user,
+    });
   };
 
   const logout = () => {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
     setAuth({ user: null, token: null });
   };
 

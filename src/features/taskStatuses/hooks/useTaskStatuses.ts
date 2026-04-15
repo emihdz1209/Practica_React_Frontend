@@ -1,10 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
-import {
-  createTaskStatus,
-  getTaskStatuses,
-} from "@/features/taskStatuses/services/taskStatusService";
-
+import { createTaskStatus, getTaskStatuses } from "@/features/taskStatuses/services/taskStatusService";
 import type { CreateTaskStatusRequest } from "@/features/taskStatuses/types/taskStatus";
 
 export const useTaskStatuses = () => {
@@ -20,9 +15,7 @@ export const useCreateTaskStatus = () => {
   return useMutation({
     mutationFn: (payload: CreateTaskStatusRequest) => createTaskStatus(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["taskStatuses"],
-      });
+      queryClient.invalidateQueries({ queryKey: ["taskStatuses"] });
     },
   });
 };

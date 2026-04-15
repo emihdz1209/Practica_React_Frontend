@@ -1,9 +1,5 @@
-import apiClient from "@/shared/api/apiClient";
-
-import type {
-  TaskStatus,
-  CreateTaskStatusRequest,
-} from "@/features/taskStatuses/types/taskStatus";
+import { apiClient } from "@/shared/api/apiClient";
+import type { TaskStatus, CreateTaskStatusRequest } from "@/features/taskStatuses/types/taskStatus";
 
 export const getTaskStatuses = async (): Promise<TaskStatus[]> => {
   const response = await apiClient.get<TaskStatus[]>("/api/task-status");

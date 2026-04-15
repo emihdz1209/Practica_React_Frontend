@@ -4,12 +4,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import { ROUTES } from "./routes";
 
-import { LoginPage }          from "@/features/auth/pages/LoginPage";
-import { DashboardPage }      from "@/features/dashboard/pages/DashboardPage";
-import { CreateUserPage }     from "@/features/users/pages/CreateUserPage";
-import { EquiposPage }        from "@/features/equipos/pages/EquiposPage";
-import { ProyectosPage }      from "@/features/proyectos/pages/ProyectosPage";
-import { TareasPage }         from "@/features/tareas/pages/TareasPage";
+import { LoginPage } from "@/features/auth/pages/LoginPage";
+import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
+import { CreateUserPage } from "@/features/users/pages/CreateUserPage";
+import { EquiposPage } from "@/features/equipos/pages/EquiposPage";
+import { ProyectosPage } from "@/features/proyectos/pages/ProyectosPage";
+import { TareasPage } from "@/features/tareas/pages/TareasPage";
 import { CreateTaskPriorityPage } from "@/features/taskPriorities/taskPriorities/pages/CreateTaskPriorityPage";
 
 import { ProtectedRoute } from "./ProtectedRoute";

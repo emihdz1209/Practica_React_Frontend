@@ -16,7 +16,16 @@ export const AppModal = ({ open, onClose, title, children }: Props) => {
       onClose={onClose}
       fullWidth
       maxWidth="sm"
-      PaperProps={{ className: "app-modal-paper" }}
+      PaperProps={{
+        className: "app-modal-paper",
+        sx: {
+          background: "#FFFFFF !important",
+          color: "#18181B !important",
+          border: "1px solid #E4E4E7 !important",
+          borderRadius: "14px !important",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.08) !important",
+        },
+      }}
     >
       <DialogTitle className="app-modal-title">
         <span>{title}</span>

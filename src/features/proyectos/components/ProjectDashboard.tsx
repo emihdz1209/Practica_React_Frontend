@@ -39,7 +39,7 @@ const persistSprint = (projectId: string, sprintId: string): void => {
     }
 };
 
-// ── Palette for stacked workload chart ──────────────────────────────────────
+// ── Palette ──────────────────────────────────────────────────────────────────
 
 const DEV_COLORS = [
     "#2563eb", "#16a34a", "#d97706", "#7c3aed",
@@ -58,12 +58,10 @@ export const ProjectDashboard = ({ projectId }: Props) => {
     const { data: devPerf = [], isLoading: loadingDevs } = useDeveloperPerformance(projectId);
     const sprintKpisQueries = useAllSprintKpis(sprints);
 
-    // Persist selected sprint whenever it changes
     useEffect(() => {
         persistSprint(projectId, selectedSprintId);
     }, [projectId, selectedSprintId]);
 
-    // Validate stored sprint still belongs to this project
     useEffect(() => {
         if (!sprints.length || !selectedSprintId) return;
         const exists = sprints.some((s) => s.sprintId === selectedSprintId);
@@ -74,7 +72,7 @@ export const ProjectDashboard = ({ projectId }: Props) => {
     const selectedSprintIdx = sprints.findIndex((s) => s.sprintId === effectiveSprintId);
     const selectedKpis = selectedSprintIdx >= 0 ? sprintKpisQueries[selectedSprintIdx]?.data : undefined;
 
-    // ── Derived KPI values ──────────────────────────────────────────
+    // ── Derived KPI values — Row 1 ──────────────────────────────────
     const progressValue = progressData?.progress ?? 0;
 
     const completionRate =
@@ -92,87 +90,68 @@ export const ProjectDashboard = ({ projectId }: Props) => {
         ? (selectedKpis.totalEstimadoHrs / selectedKpis.totalRealHrs).toFixed(2)
         : null;
 
-    // ── Chart: Gauge — Progreso General ─────────────────────────────
-    const gaugeOption = {
-        series: [
-        {
-            type: "gauge",
-            min: 0,
-            max: 100,
-            splitNumber: 4,
-            axisLine: {
-            lineStyle: {
-                width: 18,
-                color: [
-                [progressValue / 100, "#2563eb"],
-                [1, "#e4e4e7"],
-                ],
-            },
-            },
-            axisTick: { show: false },
-            splitLine: { show: false },
-            axisLabel: { show: false },
-            pointer: { show: false },
-            detail: {
-            valueAnimation: true,
-            formatter: "{value}%",
-            fontSize: 22,
-            fontWeight: "bold",
-            color: "#2563eb",
-            offsetCenter: [0, "10%"],
-            },
-            title: { show: false },
-            data: [{ value: Math.round(progressValue) }],
-        },
-        ],
-    };
+    // ── Derived KPI values — Row 2 (sprint-scoped) ──────────────────
+    // #Tasks completadas en el sprint seleccionado
+    const totalTasksSprint = selectedKpis?.tareasCompletadas ?? null;
 
-    // ── Chart: Donut — Sprint Completion Rate ────────────────────────
-    const donutOption = selectedKpis
-        ? {
-            color: ["#16a34a", "#e4e4e7"],
-            series: [
-            {
-                type: "pie",
-                radius: ["55%", "75%"],
-                avoidLabelOverlap: false,
-                label: {
-                show: true,
-                position: "center",
-                formatter: `${completionRate ?? 0}%`,
-                fontSize: 22,
-                fontWeight: "bold",
-                color: "#16a34a",
-                },
-                emphasis: { disabled: true },
-                data: [
-                { value: selectedKpis.tareasCompletadas, name: "Completadas" },
-                {
-                    value: Math.max(0, selectedKpis.totalTareas - selectedKpis.tareasCompletadas),
-                    name: "Pendientes",
-                },
-                ],
-            },
-            ],
-        }
+    // #Horas Reales del sprint seleccionado
+    const totalRealHrsSprint = selectedKpis?.totalRealHrs ?? null;
+
+    // Promedio de tasks completadas por developer en este sprint
+    // We derive this from devPerf.historicoSprints for the selected sprint
+    const sprintDevData = devPerf.map((dev) =>
+        dev.historicoSprints.find((s) => s.sprintId === effectiveSprintId)
+    );
+    const devsWithData = sprintDevData.filter(Boolean);
+
+    const avgTasksPerDev =
+        devsWithData.length > 0
+        ? (
+            devsWithData.reduce((sum, s) => sum + (s?.tareasTerminadas ?? 0), 0) /
+            devsWithData.length
+          ).toFixed(1)
         : null;
 
-    // ── Chart: Horizontal Bar — Responsabilidad Individual ──────────
-    const devNames = devPerf.map((d) => d.nombre);
-    const devRates = devPerf.map((d) =>
-        Math.round(d.rendimientoGlobal.porcentajeCompletadas * 10) / 10
+    const avgHrsPerDev =
+        devsWithData.length > 0
+        ? (
+            devsWithData.reduce((sum, s) => sum + (s?.horasReales ?? 0), 0) /
+            devsWithData.length
+          ).toFixed(1)
+        : null;
+
+    // ── All sprint names (for multi-sprint charts) ───────────────────
+    const allSprintNames = Array.from(
+        new Map(
+        devPerf
+            .flatMap((d) => d.historicoSprints)
+            .map((s) => [s.sprintId, s.sprintNombre])
+        ).values()
     );
+    const devNames = devPerf.map((d) => d.nombre);
+
+    // ── Chart: Horizontal Bar — Responsabilidad Individual ──────────
+    // Filtered by active sprint: show tareasTerminadas for that sprint
+    const hbarSprintData = devPerf.map((dev) => {
+        const sprintEntry = dev.historicoSprints.find((s) => s.sprintId === effectiveSprintId);
+        const total = dev.historicoSprints.reduce((sum, s) => sum + s.tareasTerminadas, 0);
+        const value = effectiveSprintId
+            ? (sprintEntry?.tareasTerminadas ?? 0)
+            : total;
+        return value;
+    });
+    const hbarMax = Math.max(...hbarSprintData, 1);
     const hbarOption = {
-        tooltip: { formatter: (p: { name: string; value: number }) => `${p.name}: ${p.value}%` },
+        tooltip: { formatter: (p: { name: string; value: number }) => `${p.name}: ${p.value} tareas` },
         grid: { left: "0%", right: "12%", bottom: "0%", top: "0%", containLabel: true },
-        xAxis: { type: "value", max: 100, axisLabel: { formatter: "{value}%" } },
+        xAxis: { type: "value", max: hbarMax, axisLabel: { formatter: "{value}" } },
         yAxis: { type: "category", data: devNames, axisLabel: { width: 80, overflow: "truncate" } },
         series: [
         {
             type: "bar",
-            data: devRates,
+            data: hbarSprintData,
             itemStyle: { color: "#7c3aed", borderRadius: [0, 4, 4, 0] },
-            label: { show: true, position: "right", formatter: "{c}%" },
+            label: { show: true, position: "right", formatter: "{c}" },
         },
         ],
     };
@@ -231,13 +210,6 @@ export const ProjectDashboard = ({ projectId }: Props) => {
     };
 
     // ── Chart: Multi-line — Productividad Histórica ──────────────────
-    const allSprintNames = Array.from(
-        new Map(
-        devPerf
-            .flatMap((d) => d.historicoSprints)
-            .map((s) => [s.sprintId, s.sprintNombre])
-        ).values()
-    );
     const multilineOption = {
         tooltip: { trigger: "axis" },
         legend: { data: devNames, top: 0, textStyle: { fontSize: 11 } },
@@ -255,15 +227,13 @@ export const ProjectDashboard = ({ projectId }: Props) => {
         })),
     };
 
-    // ── Chart: Stacked Bar — Carga de Trabajo (hrs por sprint) ──────
-    // Each developer is a series/color; label shows total on top of bar.
+    // ── Chart: Stacked Bar — Carga de Trabajo ───────────────────────
     const workloadTotals = allSprintNames.map((sName) =>
         devPerf.reduce((sum, dev) => {
             const match = dev.historicoSprints.find((s) => s.sprintNombre === sName);
             return sum + (match?.horasReales ?? 0);
         }, 0)
     );
-
     const workloadOption = {
         tooltip: {
             trigger: "axis",
@@ -290,7 +260,6 @@ export const ProjectDashboard = ({ projectId }: Props) => {
                 (sName) =>
                     dev.historicoSprints.find((s) => s.sprintNombre === sName)?.horasReales ?? 0
             ),
-            // Show total label only on the last (top) series
             ...(idx === devPerf.length - 1
                 ? {
                     label: {
@@ -304,6 +273,55 @@ export const ProjectDashboard = ({ projectId }: Props) => {
                     },
                   }
                 : {}),
+        })),
+    };
+
+    // ── Chart NEW: Tasks terminadas por usuario / sprint ─────────────
+    // Grouped bars: each developer is a series, x-axis = sprints
+    const tasksPerDevSprintOption = {
+        tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+        legend: { data: devNames, top: 0, textStyle: { fontSize: 11 } },
+        grid: { left: "3%", right: "4%", bottom: "8%", top: "36px", containLabel: true },
+        xAxis: { type: "category", data: allSprintNames },
+        yAxis: { type: "value", name: "Tareas", nameTextStyle: { fontSize: 11 } },
+        series: devPerf.map((dev, idx) => ({
+            name: dev.nombre,
+            type: "bar",
+            itemStyle: { color: DEV_COLORS[idx % DEV_COLORS.length] },
+            label: {
+                show: true,
+                position: "top",
+                fontSize: 10,
+                formatter: (p: { value: number }) => (p.value > 0 ? `${p.value}` : ""),
+            },
+            data: allSprintNames.map(
+                (sName) =>
+                    dev.historicoSprints.find((s) => s.sprintNombre === sName)?.tareasTerminadas ?? 0
+            ),
+        })),
+    };
+
+    // ── Chart NEW: Horas Reales por usuario / sprint ─────────────────
+    const hrsPerDevSprintOption = {
+        tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+        legend: { data: devNames, top: 0, textStyle: { fontSize: 11 } },
+        grid: { left: "3%", right: "4%", bottom: "8%", top: "36px", containLabel: true },
+        xAxis: { type: "category", data: allSprintNames },
+        yAxis: { type: "value", name: "hrs", nameTextStyle: { fontSize: 11 } },
+        series: devPerf.map((dev, idx) => ({
+            name: dev.nombre,
+            type: "bar",
+            itemStyle: { color: DEV_COLORS[idx % DEV_COLORS.length] },
+            label: {
+                show: true,
+                position: "top",
+                fontSize: 10,
+                formatter: (p: { value: number }) => (p.value > 0 ? `${p.value}h` : ""),
+            },
+            data: allSprintNames.map(
+                (sName) =>
+                    dev.historicoSprints.find((s) => s.sprintNombre === sName)?.horasReales ?? 0
+            ),
         })),
     };
 
@@ -345,13 +363,13 @@ export const ProjectDashboard = ({ projectId }: Props) => {
             </p>
         )}
 
-        {/* KPI summary cards */}
+        {/* KPI Row 1: project-level */}
         <div
             style={{
             display: "grid",
             gridTemplateColumns: "repeat(5, 1fr)",
             gap: 12,
-            marginBottom: 24,
+            marginBottom: 12,
             }}
         >
             <KpiCard label="Progreso General" value={`${Math.round(progressValue)}%`} color="#2563eb" />
@@ -377,7 +395,38 @@ export const ProjectDashboard = ({ projectId }: Props) => {
             />
         </div>
 
-        {/* Row 2: Stacked Bar + Grouped Bar */}
+        {/* KPI Row 2: sprint-scoped detail */}
+        <div
+            style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 12,
+            marginBottom: 24,
+            }}
+        >
+            <KpiCard
+            label="# Tasks Completadas"
+            value={totalTasksSprint !== null ? String(totalTasksSprint) : "—"}
+            color="#0891b2"
+            />
+            <KpiCard
+            label="# Horas Reales"
+            value={totalRealHrsSprint !== null ? `${totalRealHrsSprint} hrs` : "—"}
+            color="#ea580c"
+            />
+            <KpiCard
+            label="Promedio Tasks / Dev"
+            value={avgTasksPerDev !== null ? String(avgTasksPerDev) : "—"}
+            color="#65a30d"
+            />
+            <KpiCard
+            label="Promedio Horas / Dev"
+            value={avgHrsPerDev !== null ? `${avgHrsPerDev} hrs` : "—"}
+            color="#7c3aed"
+            />
+        </div>
+
+        {/* Row: Entrega a Tiempo + Estimación vs Real */}
         <div
             style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}
         >
@@ -398,12 +447,12 @@ export const ProjectDashboard = ({ projectId }: Props) => {
             </ChartCard>
         </div>
 
-        {/* Row 3: Multi-line + Workload Stacked Bars */}
+        {/* Row: Responsabilidad Individual + Productividad Histórica + Carga de Trabajo */}
         <div
-            style={{ display: "grid", gridTemplateColumns: "2fr 2fr 2fr", gap: 16, marginBottom: 8 }}
+            style={{ display: "grid", gridTemplateColumns: "2fr 2fr 2fr", gap: 16, marginBottom: 16 }}
         >
-            <ChartCard title="Responsabilidad Individual">
-            {devPerf.length > 0 && allSprintNames.length > 0 ? (
+            <ChartCard title="Responsabilidad Individual (sprint activo)">
+            {devPerf.length > 0 ? (
                 <ReactECharts
                 option={hbarOption}
                 style={{ height: 210 }}
@@ -424,6 +473,27 @@ export const ProjectDashboard = ({ projectId }: Props) => {
             <ChartCard title="Carga de Trabajo (hrs por sprint)">
             {devPerf.length > 0 && allSprintNames.length > 0 ? (
                 <ReactECharts option={workloadOption} style={{ height: 210 }} />
+            ) : (
+                <EmptyState />
+            )}
+            </ChartCard>
+        </div>
+
+        {/* Row: Tasks por Dev/Sprint + Horas por Dev/Sprint */}
+        <div
+            style={{ display: "grid", gridTemplateColumns: "2fr 2fr 2fr", gap: 16, marginBottom: 8 }}
+        >
+            <ChartCard title="Tasks Terminadas por Desarrollador / Sprint">
+            {devPerf.length > 0 && allSprintNames.length > 0 ? (
+                <ReactECharts option={tasksPerDevSprintOption} style={{ height: 260 }} />
+            ) : (
+                <EmptyState />
+            )}
+            </ChartCard>
+
+            <ChartCard title="Horas Reales por Desarrollador / Sprint">
+            {devPerf.length > 0 && allSprintNames.length > 0 ? (
+                <ReactECharts option={hrsPerDevSprintOption} style={{ height: 260 }} />
             ) : (
                 <EmptyState />
             )}

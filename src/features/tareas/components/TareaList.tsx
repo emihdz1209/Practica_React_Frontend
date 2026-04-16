@@ -34,9 +34,22 @@ interface TareaCardProps {
   onDelete: (taskId: string) => void;
   onStatusChange: (tarea: Tarea, newEstadoId: number) => void;
   onOpenDetails: (taskId: string) => void;
+  onDragStart: (taskId: string, event: React.DragEvent<HTMLDivElement>) => void;
+  onDragEnd: () => void;
+  isDragging: boolean;
+  suppressClick: boolean;
 }
 
-function TareaCard({ tarea, onDelete, onStatusChange, onOpenDetails }: TareaCardProps) {
+function TareaCard({
+  tarea,
+  onDelete,
+  onStatusChange,
+  onOpenDetails,
+  onDragStart,
+  onDragEnd,
+  isDragging,
+  suppressClick,
+}: TareaCardProps) {
   const p = PRIO[tarea.prioridadId] || { label: "—", bg: "#E4E4E7", color: "#52525B" };
   const done = tarea.estadoId === 3;
 
@@ -49,11 +62,22 @@ function TareaCard({ tarea, onDelete, onStatusChange, onOpenDetails }: TareaCard
     onOpenDetails(tarea.taskId);
   };
 
+  const handleCardClick = () => {
+    if (suppressClick || isDragging) {
+      return;
+    }
+
+    onOpenDetails(tarea.taskId);
+  };
+
   return (
     <div
-      className="tarea-card tarea-card-clickable"
-      onClick={() => onOpenDetails(tarea.taskId)}
+      className={`tarea-card tarea-card-clickable ${isDragging ? "tarea-card--dragging" : ""}`}
+      onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
+      draggable
+      onDragStart={(event) => onDragStart(tarea.taskId, event)}
+      onDragEnd={onDragEnd}
       role="button"
       tabIndex={0}
       aria-label={`Ver detalle de ${tarea.titulo}`}
@@ -108,15 +132,85 @@ interface TareaListProps {
 }
 
 export const TareaList = ({ tareas, onDelete, onStatusChange, onOpenDetails }: TareaListProps) => {
+  const [draggedTaskId, setDraggedTaskId] = React.useState<string | null>(null);
+  const [dropEstadoId, setDropEstadoId] = React.useState<number | null>(null);
+  const [suppressClickTaskId, setSuppressClickTaskId] = React.useState<string | null>(null);
+
   if (!tareas || tareas.length === 0)
     return <p className="kanban-empty">No hay tareas registradas</p>;
+
+  const getDraggedTask = (event: React.DragEvent<HTMLDivElement>) => {
+    const dataTaskId =
+      event.dataTransfer.getData("application/x-task-id") ||
+      event.dataTransfer.getData("text/plain") ||
+      draggedTaskId;
+
+    if (!dataTaskId) {
+      return null;
+    }
+
+    return tareas.find((task) => task.taskId === dataTaskId) || null;
+  };
+
+  const handleCardDragStart = (taskId: string, event: React.DragEvent<HTMLDivElement>) => {
+    setDraggedTaskId(taskId);
+    setSuppressClickTaskId(null);
+
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/x-task-id", taskId);
+    event.dataTransfer.setData("text/plain", taskId);
+  };
+
+  const handleCardDragEnd = () => {
+    if (draggedTaskId) {
+      setSuppressClickTaskId(draggedTaskId);
+      window.setTimeout(() => setSuppressClickTaskId(null), 0);
+    }
+
+    setDraggedTaskId(null);
+    setDropEstadoId(null);
+  };
+
+  const handleColumnDragOver = (estadoId: number, event: React.DragEvent<HTMLDivElement>) => {
+    if (!draggedTaskId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDropEstadoId(estadoId);
+  };
+
+  const handleColumnDrop = (estadoId: number, event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+
+    const draggedTask = getDraggedTask(event);
+
+    setDropEstadoId(null);
+    setDraggedTaskId(null);
+
+    if (!draggedTask || draggedTask.estadoId === estadoId) {
+      return;
+    }
+
+    onStatusChange(draggedTask, estadoId);
+  };
 
   return (
     <div className="kanban-board">
       {COLUMNS.map(({ estadoId, label, accent, headerBg, headerBorder, countBg, countColor }) => {
         const cards = sortTareas(tareas.filter((t) => t.estadoId === estadoId));
         return (
-          <div key={estadoId} className="kanban-column">
+          <div
+            key={estadoId}
+            className={`kanban-column kanban-column-drop-target ${dropEstadoId === estadoId ? "is-drop-active" : ""}`}
+            onDragOver={(event) => handleColumnDragOver(estadoId, event)}
+            onDragEnter={(event) => handleColumnDragOver(estadoId, event)}
+            onDragLeave={() => {
+              setDropEstadoId((current) => (current === estadoId ? null : current));
+            }}
+            onDrop={(event) => handleColumnDrop(estadoId, event)}
+          >
             <div
               className="kanban-col-header"
               style={{ background: headerBg, borderBottomColor: headerBorder }}
@@ -143,6 +237,10 @@ export const TareaList = ({ tareas, onDelete, onStatusChange, onOpenDetails }: T
                     onDelete={onDelete}
                     onStatusChange={onStatusChange}
                     onOpenDetails={onOpenDetails}
+                    onDragStart={handleCardDragStart}
+                    onDragEnd={handleCardDragEnd}
+                    isDragging={draggedTaskId === t.taskId}
+                    suppressClick={suppressClickTaskId === t.taskId}
                   />
                 ))
               )}

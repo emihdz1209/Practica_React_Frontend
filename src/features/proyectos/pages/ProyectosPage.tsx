@@ -61,37 +61,54 @@ const EMPTY = { nombre: "", descripcion: "", fechaInicio: "", fechaFin: "" };
 const fmtDate = (str: string | null) =>
   str ? new Date(str).toLocaleDateString("es-MX") : "—";
 
-/** Converts an ISO timestamp to the value required by datetime-local inputs */
 const toDatetimeLocal = (str: string | null): string => {
   if (!str) return "";
-  // Slice to "YYYY-MM-DDTHH:mm"
   return str.slice(0, 16);
 };
 
 const progressColor = (pct: number) =>
   pct >= 75 ? "#16A34A" : pct >= 40 ? "#2563EB" : "#D97706";
 
-// ── ProjectDetailModal ───────────────────────────────────────────────────────
+// ── ProyectoSideModal ─────────────────────────────────────────────────────────
 
-interface DetailModalProps {
-  project: Proyecto;
+interface SideModalProps {
+  project: Proyecto | null;
   onClose: () => void;
-  onProjectDeleted: () => void;
+  onProjectDeleted: (projectId: string) => void;
   teamId: string;
 }
 
-const ProjectDetailModal = ({ project, onClose, onProjectDeleted, teamId }: DetailModalProps) => {
+const ProyectoSideModal = ({ project, onClose, onProjectDeleted, teamId }: SideModalProps) => {
+  const isOpen = Boolean(project);
+
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [form, setForm] = useState({
-    nombre: project.nombre,
-    descripcion: project.descripcion ?? "",
-    fechaInicio: toDatetimeLocal(project.fechaInicio),
-    fechaFin: toDatetimeLocal(project.fechaFin),
+    nombre: "",
+    descripcion: "",
+    fechaInicio: "",
+    fechaFin: "",
   });
 
   const updateMutation = useUpdateProyecto(teamId);
   const deleteMutation = useDeleteProyecto(teamId);
+
+  // Sync form when selected project changes
+  useEffect(() => {
+    if (!project) {
+      setEditing(false);
+      setConfirmDelete(false);
+      return;
+    }
+    setForm({
+      nombre: project.nombre,
+      descripcion: project.descripcion ?? "",
+      fechaInicio: toDatetimeLocal(project.fechaInicio),
+      fechaFin: toDatetimeLocal(project.fechaFin),
+    });
+    setEditing(false);
+    setConfirmDelete(false);
+  }, [project]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -99,7 +116,7 @@ const ProjectDetailModal = ({ project, onClose, onProjectDeleted, teamId }: Deta
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.nombre.trim()) return;
+    if (!project || !form.nombre.trim()) return;
     updateMutation.mutate(
       {
         projectId: project.projectId,
@@ -110,198 +127,199 @@ const ProjectDetailModal = ({ project, onClose, onProjectDeleted, teamId }: Deta
           fechaFin: form.fechaFin || null,
         },
       },
-      {
-        onSuccess: () => {
-          setEditing(false);
-        },
-      }
+      { onSuccess: () => setEditing(false) }
     );
   };
 
   const handleDelete = () => {
+    if (!project) return;
     deleteMutation.mutate(project.projectId, {
       onSuccess: () => {
-        onProjectDeleted();
+        onProjectDeleted(project.projectId);
         onClose();
       },
     });
   };
 
-  const pct = project.progreso || 0;
+  const pct = project?.progreso ?? 0;
 
   return (
-    <AppModal open onClose={onClose} title={editing ? "Editar proyecto" : project.nombre}>
-      {!editing ? (
-        /* ── Detail view ── */
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* Progress */}
+    <aside
+      className={`tareas-side-modal ${isOpen ? "tareas-side-modal--open" : ""}`}
+      aria-hidden={!isOpen}
+      aria-label="Detalle de proyecto"
+    >
+      <div className="tareas-side-modal-inner">
+        {/* Header */}
+        <div className="tareas-side-modal-header">
           <div>
-            <span
-              style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase",
-                letterSpacing: "0.08em", color: "var(--text-3)" }}
-            >
-              Progreso
-            </span>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
-              <div className="progress-track" style={{ flex: 1 }}>
-                <div
-                  className="progress-fill"
-                  style={{ width: `${pct}%`, background: progressColor(pct) }}
-                />
-              </div>
-              <span style={{ fontWeight: 700, color: progressColor(pct), minWidth: 36 }}>
-                {pct}%
-              </span>
-            </div>
+            <span className="task-detail-label">Detalle de proyecto</span>
+            <h3 className="tareas-side-modal-title">
+              {project ? project.nombre : "Selecciona un proyecto"}
+            </h3>
           </div>
-
-          {/* Description */}
-          <div>
-            <span
-              style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase",
-                letterSpacing: "0.08em", color: "var(--text-3)" }}
-            >
-              Descripción
-            </span>
-            <p style={{ marginTop: 4, fontSize: "0.88rem", color: "var(--text-1)", lineHeight: 1.5 }}>
-              {project.descripcion || "Sin descripción"}
-            </p>
-          </div>
-
-          {/* Dates */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <span
-                style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase",
-                  letterSpacing: "0.08em", color: "var(--text-3)" }}
-              >
-                Fecha inicio
-              </span>
-              <p style={{ marginTop: 4, fontSize: "0.88rem", color: "var(--text-1)" }}>
-                {fmtDate(project.fechaInicio)}
-              </p>
-            </div>
-            <div>
-              <span
-                style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase",
-                  letterSpacing: "0.08em", color: "var(--text-3)" }}
-              >
-                Fecha fin
-              </span>
-              <p style={{ marginTop: 4, fontSize: "0.88rem", color: "var(--text-1)" }}>
-                {fmtDate(project.fechaFin)}
-              </p>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-            <Button
-              variant="outlined"
-              startIcon={<EditIcon />}
-              onClick={() => setEditing(true)}
-              size="small"
-            >
-              Editar
-            </Button>
-
-            {!confirmDelete ? (
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={<DeleteIcon />}
-                onClick={() => setConfirmDelete(true)}
-                size="small"
-              >
-                Eliminar
-              </Button>
-            ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: "0.8rem", color: "var(--text-2)" }}>
-                  ¿Confirmar eliminación?
-                </span>
-                <Button
-                  variant="contained"
-                  color="error"
-                  size="small"
-                  onClick={handleDelete}
-                  disabled={deleteMutation.isPending}
-                >
-                  {deleteMutation.isPending ? <CircularProgress size={14} /> : "Sí, eliminar"}
-                </Button>
-                <Button
-                  variant="text"
-                  size="small"
-                  onClick={() => setConfirmDelete(false)}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="app-modal-close-btn"
+            aria-label="Cerrar panel"
+          >
+            <CloseIcon />
+          </button>
         </div>
-      ) : (
-        /* ── Edit form ── */
-        <form onSubmit={handleSave} className="modal-form">
-          <TextField
-            name="nombre"
-            label="Nombre del proyecto"
-            value={form.nombre}
-            onChange={handleChange}
-            required
-            size="small"
-            fullWidth
-          />
-          <TextField
-            name="descripcion"
-            label="Descripción"
-            value={form.descripcion}
-            onChange={handleChange}
-            multiline
-            rows={3}
-            size="small"
-            fullWidth
-          />
-          <div className="modal-form-row">
-            <TextField
-              name="fechaInicio"
-              label="Fecha inicio"
-              type="datetime-local"
-              value={form.fechaInicio}
-              onChange={handleChange}
-              size="small"
-              slotProps={{ inputLabel: { shrink: true } }}
-            />
-            <TextField
-              name="fechaFin"
-              label="Fecha fin"
-              type="datetime-local"
-              value={form.fechaFin}
-              onChange={handleChange}
-              size="small"
-              slotProps={{ inputLabel: { shrink: true } }}
-            />
-          </div>
 
-          <div style={{ display: "flex", gap: 10 }}>
-            <Button
-              type="submit"
-              variant="contained"
-              className="AddButton"
-              disabled={updateMutation.isPending}
-              fullWidth
-            >
-              {updateMutation.isPending ? <CircularProgress size={18} /> : "Guardar cambios"}
-            </Button>
-            <Tooltip title="Cancelar edición">
-              <IconButton onClick={() => setEditing(false)} size="small">
-                <CloseIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </div>
-        </form>
-      )}
-    </AppModal>
+        {/* Body */}
+        <div className="tareas-side-modal-body">
+          {!project ? (
+            <p className="task-detail-empty">Selecciona un proyecto para ver su detalle.</p>
+          ) : !editing ? (
+            /* ── Detail view ── */
+            <div className="task-detail-content">
+              {/* Progress */}
+              <div className="task-detail-section">
+                <span className="task-detail-label">Progreso</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+                  <div className="progress-track" style={{ flex: 1 }}>
+                    <div
+                      className="progress-fill"
+                      style={{ width: `${pct}%`, background: progressColor(pct) }}
+                    />
+                  </div>
+                  <span style={{ fontWeight: 700, color: progressColor(pct), minWidth: 36, fontSize: "0.88rem" }}>
+                    {pct}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="task-detail-section">
+                <span className="task-detail-label">Descripción</span>
+                <p className="task-detail-description" style={{ marginTop: 4 }}>
+                  {project.descripcion || "Sin descripción"}
+                </p>
+              </div>
+
+              {/* Dates */}
+              <div className="task-detail-section">
+                <span className="task-detail-label">Fechas</span>
+                <div className="task-system-meta" style={{ marginTop: 4 }}>
+                  <p className="task-detail-description">
+                    Inicio: {fmtDate(project.fechaInicio)}
+                  </p>
+                  <p className="task-detail-description">
+                    Fin: {fmtDate(project.fechaFin)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<EditIcon />}
+                  onClick={() => setEditing(true)}
+                  size="small"
+                >
+                  Editar
+                </Button>
+
+                {!confirmDelete ? (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<DeleteIcon />}
+                    onClick={() => setConfirmDelete(true)}
+                    size="small"
+                  >
+                    Eliminar
+                  </Button>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: "0.8rem", color: "var(--text-2)" }}>
+                      ¿Confirmar eliminación?
+                    </span>
+                    <Button
+                      variant="contained"
+                      color="error"
+                      size="small"
+                      onClick={handleDelete}
+                      disabled={deleteMutation.isPending}
+                    >
+                      {deleteMutation.isPending ? <CircularProgress size={14} /> : "Sí, eliminar"}
+                    </Button>
+                    <Button
+                      variant="text"
+                      size="small"
+                      onClick={() => setConfirmDelete(false)}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* ── Edit form ── */
+            <form onSubmit={handleSave} className="task-edit-form">
+              <TextField
+                name="nombre"
+                label="Nombre del proyecto"
+                value={form.nombre}
+                onChange={handleChange}
+                required
+                size="small"
+                fullWidth
+              />
+              <TextField
+                name="descripcion"
+                label="Descripción"
+                value={form.descripcion}
+                onChange={handleChange}
+                multiline
+                rows={3}
+                size="small"
+                fullWidth
+              />
+              <TextField
+                name="fechaInicio"
+                label="Fecha inicio"
+                type="datetime-local"
+                value={form.fechaInicio}
+                onChange={handleChange}
+                size="small"
+                fullWidth
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <TextField
+                name="fechaFin"
+                label="Fecha fin"
+                type="datetime-local"
+                value={form.fechaFin}
+                onChange={handleChange}
+                size="small"
+                fullWidth
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <Tooltip title="Cancelar edición">
+                  <IconButton onClick={() => setEditing(false)} size="small">
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Button
+                  type="submit"
+                  className="AddButton"
+                  disabled={updateMutation.isPending}
+                >
+                  {updateMutation.isPending ? <CircularProgress size={18} /> : "Guardar cambios"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    </aside>
   );
 };
 
@@ -324,6 +342,8 @@ export const ProyectosPage = () => {
     selectedTeamId || undefined
   );
   const createMutation = useCreateProyecto(selectedTeamId);
+
+  const isSideModalOpen = Boolean(detailProject);
 
   // ── Persistence effects ────────────────────────────────────────
   useEffect(() => {
@@ -406,168 +426,188 @@ export const ProyectosPage = () => {
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="filter-bar">
-        <span className="section-label" style={{ margin: 0 }}>
-          Filtrar por equipo
-        </span>
-        <FormControl size="small" style={{ minWidth: 200 }}>
-          <Select
-            value={selectedTeamId}
-            displayEmpty
-            onChange={(e) => handleTeamChange(e.target.value)}
-          >
-            <MenuItem value="">
-              <em style={{ fontStyle: "normal", color: "#A1A1AA" }}>Seleccionar equipo</em>
-            </MenuItem>
-            {(equipos || []).map((eq) => (
-              <MenuItem key={eq.teamId} value={eq.teamId}>
-                {eq.nombre}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        {selectedTeamId && (
-          <>
-            <span className="section-label" style={{ margin: "0 0 0 16px" }}>
-              Dashboard del proyecto
+      {/* Main layout with side modal */}
+      <div className={`tareas-layout ${isSideModalOpen ? "tareas-layout--with-panel" : ""}`}>
+        <div className="tareas-main">
+          {/* Filters */}
+          <div className="filter-bar">
+            <span className="section-label" style={{ margin: 0 }}>
+              Filtrar por equipo
             </span>
-            <FormControl size="small" style={{ minWidth: 220 }}>
+            <FormControl size="small" style={{ minWidth: 200 }}>
               <Select
-                value={selectedProjectId}
+                value={selectedTeamId}
                 displayEmpty
-                onChange={(e) => setSelectedProjectId(e.target.value)}
+                onChange={(e) => handleTeamChange(e.target.value)}
               >
                 <MenuItem value="">
-                  <em style={{ fontStyle: "normal", color: "#A1A1AA" }}>Seleccionar proyecto</em>
+                  <em style={{ fontStyle: "normal", color: "#A1A1AA" }}>Seleccionar equipo</em>
                 </MenuItem>
-                {(proyectos || []).map((p) => (
-                  <MenuItem key={p.projectId} value={p.projectId}>
-                    {p.nombre}
+                {(equipos || []).map((eq) => (
+                  <MenuItem key={eq.teamId} value={eq.teamId}>
+                    {eq.nombre}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
-          </>
-        )}
-      </div>
 
-      {/* Projects table */}
-      <div style={{ width: "100%" }}>
-        <span className="section-label">
-          Proyectos registrados · {(proyectos || []).length}
-        </span>
-
-        {loadingEquipos || loadingProyectos ? (
-          <CircularProgress />
-        ) : !selectedTeamId ? (
-          <p style={{ color: "var(--text-3)", fontSize: "0.875rem", marginTop: 24 }}>
-            Selecciona un equipo para ver sus proyectos.
-          </p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Descripción</th>
-                <th>Progreso</th>
-                <th>Inicio</th>
-                <th>Fin</th>
-                <th>Dashboard</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(proyectos || []).map((p) => {
-                const pct = p.progreso || 0;
-                const isActive = p.projectId === selectedProjectId;
-                return (
-                  <tr
-                    key={p.projectId}
-                    style={isActive ? { background: "var(--accent-subtle)" } : undefined}
+            {selectedTeamId && (
+              <>
+                <span className="section-label" style={{ margin: "0 0 0 16px" }}>
+                  Dashboard del proyecto
+                </span>
+                <FormControl size="small" style={{ minWidth: 220 }}>
+                  <Select
+                    value={selectedProjectId}
+                    displayEmpty
+                    onChange={(e) => setSelectedProjectId(e.target.value)}
                   >
-                    <td className="cell-primary">
-                      {/* Clickable name → opens detail modal */}
-                      <button
-                        onClick={() => setDetailProject(p)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          padding: 0,
-                          cursor: "pointer",
-                          fontWeight: 600,
-                          color: "var(--accent)",
-                          fontSize: "inherit",
-                          textDecoration: "underline",
-                          textDecorationStyle: "dotted",
-                          textUnderlineOffset: 3,
-                        }}
-                      >
+                    <MenuItem value="">
+                      <em style={{ fontStyle: "normal", color: "#A1A1AA" }}>Seleccionar proyecto</em>
+                    </MenuItem>
+                    {(proyectos || []).map((p) => (
+                      <MenuItem key={p.projectId} value={p.projectId}>
                         {p.nombre}
-                      </button>
-                    </td>
-                    <td>{p.descripcion || "—"}</td>
-                    <td>
-                      <div className="progress-wrap">
-                        <div className="progress-track">
-                          <div
-                            className="progress-fill"
-                            style={{ width: `${pct}%`, background: progressColor(pct) }}
-                          />
-                        </div>
-                        <span className="progress-label">{pct}%</span>
-                      </div>
-                    </td>
-                    <td>{fmtDate(p.fechaInicio)}</td>
-                    <td>{fmtDate(p.fechaFin)}</td>
-                    <td>
-                      <button
-                        onClick={() =>
-                          setSelectedProjectId(isActive ? "" : p.projectId)
-                        }
-                        style={{
-                          fontSize: "0.75rem",
-                          padding: "4px 10px",
-                          border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
-                          borderRadius: "var(--r-sm)",
-                          background: isActive ? "var(--accent-subtle)" : "transparent",
-                          color: isActive ? "var(--accent)" : "var(--text-2)",
-                          cursor: "pointer",
-                          fontWeight: isActive ? 600 : 400,
-                        }}
-                      >
-                        {isActive ? "Cerrar" : "Ver"}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Dashboard section */}
-      {selectedProjectId && selectedProject && (
-        <div style={{ width: "100%" }}>
-          <div className="divider" />
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-            <span className="section-label" style={{ margin: 0 }}>
-              Dashboard
-            </span>
-            <span
-              style={{
-                fontSize: "0.82rem",
-                fontWeight: 600,
-                color: "var(--text-2)",
-              }}
-            >
-              {selectedProject.nombre}
-            </span>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </>
+            )}
           </div>
-          <ProjectDashboard projectId={selectedProjectId} />
+
+          {/* Projects table */}
+          <div style={{ width: "100%" }}>
+            <span className="section-label">
+              Proyectos registrados · {(proyectos || []).length}
+            </span>
+
+            {loadingEquipos || loadingProyectos ? (
+              <CircularProgress />
+            ) : !selectedTeamId ? (
+              <p style={{ color: "var(--text-3)", fontSize: "0.875rem", marginTop: 24 }}>
+                Selecciona un equipo para ver sus proyectos.
+              </p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Progreso</th>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                    <th>Dashboard</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(proyectos || []).map((p) => {
+                    const pct = p.progreso || 0;
+                    const isActive = p.projectId === selectedProjectId;
+                    const isDetailOpen = detailProject?.projectId === p.projectId;
+                    return (
+                      <tr
+                        key={p.projectId}
+                        style={isActive ? { background: "var(--accent-subtle)" } : undefined}
+                      >
+                        <td className="cell-primary">
+                          <button
+                            onClick={() =>
+                              setDetailProject(isDetailOpen ? null : p)
+                            }
+                            style={{
+                              background: "none",
+                              border: "none",
+                              padding: 0,
+                              cursor: "pointer",
+                              fontWeight: 600,
+                              color: isDetailOpen ? "var(--accent)" : "var(--text-1)",
+                              fontSize: "inherit",
+                              textDecoration: "underline",
+                              textDecorationStyle: "dotted",
+                              textUnderlineOffset: 3,
+                            }}
+                          >
+                            {p.nombre}
+                          </button>
+                        </td>
+                        <td>{p.descripcion || "—"}</td>
+                        <td>
+                          <div className="progress-wrap">
+                            <div className="progress-track">
+                              <div
+                                className="progress-fill"
+                                style={{ width: `${pct}%`, background: progressColor(pct) }}
+                              />
+                            </div>
+                            <span className="progress-label">{pct}%</span>
+                          </div>
+                        </td>
+                        <td>{fmtDate(p.fechaInicio)}</td>
+                        <td>{fmtDate(p.fechaFin)}</td>
+                        <td>
+                          <button
+                            onClick={() =>
+                              setSelectedProjectId(isActive ? "" : p.projectId)
+                            }
+                            style={{
+                              fontSize: "0.75rem",
+                              padding: "4px 10px",
+                              border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
+                              borderRadius: "var(--r-sm)",
+                              background: isActive ? "var(--accent-subtle)" : "transparent",
+                              color: isActive ? "var(--accent)" : "var(--text-2)",
+                              cursor: "pointer",
+                              fontWeight: isActive ? 600 : 400,
+                            }}
+                          >
+                            {isActive ? "Cerrar" : "Ver"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Dashboard section */}
+          {selectedProjectId && selectedProject && (
+            <div style={{ width: "100%" }}>
+              <div className="divider" />
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+                <span className="section-label" style={{ margin: 0 }}>
+                  Dashboard
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    color: "var(--text-2)",
+                  }}
+                >
+                  {selectedProject.nombre}
+                </span>
+              </div>
+              <ProjectDashboard projectId={selectedProjectId} />
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Side modal */}
+        <ProyectoSideModal
+          project={detailProject}
+          teamId={selectedTeamId}
+          onClose={() => setDetailProject(null)}
+          onProjectDeleted={(deletedId) => {
+            if (deletedId === selectedProjectId) {
+              setSelectedProjectId("");
+            }
+            setDetailProject(null);
+          }}
+        />
+      </div>
 
       {/* Create project modal */}
       <AppModal
@@ -626,22 +666,6 @@ export const ProyectosPage = () => {
           </Button>
         </form>
       </AppModal>
-
-      {/* Project detail / edit modal */}
-      {detailProject && (
-        <ProjectDetailModal
-          project={detailProject}
-          teamId={selectedTeamId}
-          onClose={() => setDetailProject(null)}
-          onProjectDeleted={() => {
-            // If the deleted project was the active dashboard, deselect it
-            if (detailProject.projectId === selectedProjectId) {
-              setSelectedProjectId("");
-            }
-            setDetailProject(null);
-          }}
-        />
-      )}
     </div>
   );
 };

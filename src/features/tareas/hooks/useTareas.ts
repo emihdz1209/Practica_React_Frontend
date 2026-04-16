@@ -3,12 +3,14 @@ import {
   getTareasByProyecto,
   getTareaById,
   getTaskUsers,
+  assignUserToTask,
+  removeUserFromTask,
   createTarea,
   updateTarea,
   updateTareaStatus,
   deleteTarea,
 } from "@/features/tareas/services/tareaService";
-import type { CreateTareaRequest, UpdateTareaRequest } from "@/features/tareas/types/tarea";
+import type { CreateTareaRequest, Tarea, UpdateTareaRequest } from "@/features/tareas/types/tarea";
 
 export const useTareas = (projectId?: string) => {
   return useQuery({
@@ -45,37 +47,112 @@ export const useCreateTarea = (projectId: string) => {
   });
 };
 
-export const useUpdateTarea = (projectId: string) => {
+export const useUpdateTarea = (projectId?: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ taskId, data }: { taskId: string; data: UpdateTareaRequest }) =>
       updateTarea(taskId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tareas", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["tareas"] });
+
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["tareas", projectId] });
+      }
     },
   });
 };
 
-export const useUpdateTareaStatus = (projectId: string) => {
+export const useUpdateTareaStatus = (projectId?: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ taskId, estadoId }: { taskId: string; estadoId: number }) =>
       updateTareaStatus(taskId, estadoId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tareas", projectId] });
+    onSuccess: (_, { taskId, estadoId }) => {
+      if (projectId) {
+        queryClient.setQueryData<Tarea[]>(["tareas", projectId], (current) => {
+          if (!current) {
+            return current;
+          }
+
+          return current.map((task) =>
+            task.taskId === taskId
+              ? {
+                  ...task,
+                  estadoId,
+                }
+              : task
+          );
+        });
+      }
+
+      queryClient.setQueryData<Tarea>(["tarea", taskId], (current) => {
+        if (!current) {
+          return current;
+        }
+
+        return {
+          ...current,
+          estadoId,
+        };
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["tareas"] });
+      queryClient.invalidateQueries({ queryKey: ["tarea", taskId] });
+
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["tareas", projectId] });
+      }
     },
   });
 };
 
-export const useDeleteTarea = (projectId: string) => {
+export const useDeleteTarea = (projectId?: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (taskId: string) => deleteTarea(taskId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tareas", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["tareas"] });
+
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["tareas", projectId] });
+      }
+    },
+  });
+};
+
+export const useAssignTaskUser = (projectId?: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ taskId, userId }: { taskId: string; userId: string }) =>
+      assignUserToTask(taskId, userId),
+    onSuccess: (_, { taskId }) => {
+      queryClient.invalidateQueries({ queryKey: ["taskUsers", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["tarea", taskId] });
+
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["tareas", projectId] });
+      }
+    },
+  });
+};
+
+export const useRemoveTaskUser = (projectId?: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ taskId, userId }: { taskId: string; userId: string }) =>
+      removeUserFromTask(taskId, userId),
+    onSuccess: (_, { taskId }) => {
+      queryClient.invalidateQueries({ queryKey: ["taskUsers", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["tarea", taskId] });
+
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: ["tareas", projectId] });
+      }
     },
   });
 };

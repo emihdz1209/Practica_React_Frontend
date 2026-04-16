@@ -6,6 +6,13 @@ import type {
   UpdateTareaRequest,
 } from "@/features/tareas/types/tarea";
 
+const toRawId = (value: string) => value.replace(/-/g, "").toUpperCase();
+
+const normalizePathIds = (taskId: string, userId: string) => ({
+  taskId: toRawId(taskId),
+  userId: toRawId(userId),
+});
+
 export const getTareasByProyecto = async (projectId: string): Promise<Tarea[]> => {
   const response = await apiClient.get<Tarea[]>(`/api/projects/${projectId}/tasks`);
   return response.data;
@@ -19,6 +26,34 @@ export const getTareaById = async (taskId: string): Promise<Tarea> => {
 export const getTaskUsers = async (taskId: string): Promise<TaskAssignment[]> => {
   const response = await apiClient.get<TaskAssignment[]>(`/api/tasks/${taskId}/users`);
   return response.data;
+};
+
+export const assignUserToTask = async (taskId: string, userId: string): Promise<void> => {
+  try {
+    await apiClient.post(`/api/tasks/${taskId}/users/${userId}`);
+  } catch (error) {
+    const normalizedIds = normalizePathIds(taskId, userId);
+
+    if (normalizedIds.taskId === taskId && normalizedIds.userId === userId) {
+      throw error;
+    }
+
+    await apiClient.post(`/api/tasks/${normalizedIds.taskId}/users/${normalizedIds.userId}`);
+  }
+};
+
+export const removeUserFromTask = async (taskId: string, userId: string): Promise<void> => {
+  try {
+    await apiClient.delete(`/api/tasks/${taskId}/users/${userId}`);
+  } catch (error) {
+    const normalizedIds = normalizePathIds(taskId, userId);
+
+    if (normalizedIds.taskId === taskId && normalizedIds.userId === userId) {
+      throw error;
+    }
+
+    await apiClient.delete(`/api/tasks/${normalizedIds.taskId}/users/${normalizedIds.userId}`);
+  }
 };
 
 export const createTarea = async (

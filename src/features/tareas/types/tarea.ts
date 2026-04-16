@@ -10,8 +10,8 @@ export interface Tarea {
   projectId: string;
   sprintId: string | null;
   sprintNombre: string | null;
-  tiempoEstimado: number;
-  tiempoReal: number;
+  tiempoEstimado: number | null;
+  tiempoReal: number | null;
 }
 
 export interface TaskAssignment {
@@ -35,5 +35,6 @@ export interface UpdateTareaRequest {
   fechaLimite: string;
   prioridadId: number;
   sprintId?: string;
-  tiempoEstimado?: number;
+  tiempoEstimado?: number | null;
+  tiempoReal?: number | null;
 }

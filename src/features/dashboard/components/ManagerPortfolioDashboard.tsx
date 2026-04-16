@@ -27,9 +27,18 @@ import type { ManagedProject } from "@/features/dashboard/types/dashboard";
 // ── Palette ───────────────────────────────────────────────────────────────────
 
 const PROJECT_COLORS = [
-  "#2563eb", "#16a34a", "#d97706", "#7c3aed",
-  "#dc2626", "#0891b2", "#ea580c", "#65a30d",
-  "#6366f1", "#f43f5e", "#14b8a6", "#a855f7",
+  "#2563eb",
+  "#16a34a",
+  "#d97706",
+  "#7c3aed",
+  "#dc2626",
+  "#0891b2",
+  "#ea580c",
+  "#65a30d",
+  "#6366f1",
+  "#f43f5e",
+  "#14b8a6",
+  "#a855f7",
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -79,7 +88,11 @@ export const ManagerPortfolioDashboard = () => {
     useMultiProjectDevPerformance(selectedIds);
 
   const isLoading =
-    loadingProjects || loadingSprints || loadingKpis || loadingProgress || loadingDevs;
+    loadingProjects ||
+    loadingSprints ||
+    loadingKpis ||
+    loadingProgress ||
+    loadingDevs;
 
   // ── KPI aggregation ─────────────────────────────────────────────
   const kpiAgg = useMemo(() => {
@@ -164,9 +177,22 @@ export const ManagerPortfolioDashboard = () => {
     });
 
     return {
-      tooltip: { trigger: "axis" as const, axisPointer: { type: "shadow" as const } },
-      legend: { data: ["On-time Tasks", "Delayed Tasks"], top: 0, textStyle: { fontSize: 11 } },
-      grid: { left: "3%", right: "4%", bottom: "8%", top: "36px", containLabel: true },
+      tooltip: {
+        trigger: "axis" as const,
+        axisPointer: { type: "shadow" as const },
+      },
+      legend: {
+        data: ["On-time Tasks", "Delayed Tasks"],
+        top: 0,
+        textStyle: { fontSize: 11 },
+      },
+      grid: {
+        left: "3%",
+        right: "4%",
+        bottom: "8%",
+        top: "36px",
+        containLabel: true,
+      },
       xAxis: {
         type: "category" as const,
         data: projectNames,
@@ -197,17 +223,35 @@ export const ManagerPortfolioDashboard = () => {
     const projectNames = selectedIds.map((pid) => nameMap[pid] ?? pid);
     const estimatedData = selectedIds.map((pid) => {
       const kpis = kpisByProject[pid] ?? [];
-      return Math.round(kpis.reduce((sum, k) => sum + k.totalEstimadoHrs, 0) * 10) / 10;
+      return (
+        Math.round(kpis.reduce((sum, k) => sum + k.totalEstimadoHrs, 0) * 10) /
+        10
+      );
     });
     const realData = selectedIds.map((pid) => {
       const kpis = kpisByProject[pid] ?? [];
-      return Math.round(kpis.reduce((sum, k) => sum + k.totalRealHrs, 0) * 10) / 10;
+      return (
+        Math.round(kpis.reduce((sum, k) => sum + k.totalRealHrs, 0) * 10) / 10
+      );
     });
 
     return {
-      tooltip: { trigger: "axis" as const, axisPointer: { type: "shadow" as const } },
-      legend: { data: ["Estimated Hours", "Real Hours"], top: 0, textStyle: { fontSize: 11 } },
-      grid: { left: "3%", right: "4%", bottom: "8%", top: "36px", containLabel: true },
+      tooltip: {
+        trigger: "axis" as const,
+        axisPointer: { type: "shadow" as const },
+      },
+      legend: {
+        data: ["Estimated Hours", "Real Hours"],
+        top: 0,
+        textStyle: { fontSize: 11 },
+      },
+      grid: {
+        left: "3%",
+        right: "4%",
+        bottom: "8%",
+        top: "36px",
+        containLabel: true,
+      },
       xAxis: {
         type: "category" as const,
         data: projectNames,
@@ -247,7 +291,7 @@ export const ManagerPortfolioDashboard = () => {
     }
 
     const entries = Object.values(devMap).sort(
-      (a, b) => a.completadas - b.completadas
+      (a, b) => a.completadas - b.completadas,
     );
     const devNames = entries.map((e) => e.nombre);
     const devValues = entries.map((e) => e.completadas);
@@ -257,7 +301,13 @@ export const ManagerPortfolioDashboard = () => {
         formatter: (p: { name: string; value: number }) =>
           `${p.name}: ${p.value} tasks completed`,
       },
-      grid: { left: "0%", right: "12%", bottom: "0%", top: "0%", containLabel: true },
+      grid: {
+        left: "0%",
+        right: "12%",
+        bottom: "0%",
+        top: "0%",
+        containLabel: true,
+      },
       xAxis: { type: "value" as const, name: "Completed Tasks" },
       yAxis: {
         type: "category" as const,
@@ -290,7 +340,9 @@ export const ManagerPortfolioDashboard = () => {
 
   if (allProjects.length === 0) {
     return (
-      <p style={{ color: "var(--text-3)", fontSize: "0.875rem", marginTop: 16 }}>
+      <p
+        style={{ color: "var(--text-3)", fontSize: "0.875rem", marginTop: 16 }}
+      >
         No managed projects found for this account.
       </p>
     );
@@ -324,7 +376,10 @@ export const ManagerPortfolioDashboard = () => {
           >
             {allProjects.map((p) => (
               <MenuItem key={p.projectId} value={p.projectId}>
-                <Checkbox checked={selectedIds.includes(p.projectId)} size="small" />
+                <Checkbox
+                  checked={selectedIds.includes(p.projectId)}
+                  size="small"
+                />
                 <ListItemText primary={p.nombre} />
               </MenuItem>
             ))}
@@ -333,10 +388,14 @@ export const ManagerPortfolioDashboard = () => {
         <Button
           size="small"
           variant="outlined"
-          onClick={selectedIds.length === allProjects.length ? unselectAll : selectAll}
+          onClick={
+            selectedIds.length === allProjects.length ? unselectAll : selectAll
+          }
           style={{ textTransform: "none", fontSize: "0.75rem" }}
         >
-          {selectedIds.length === allProjects.length ? "Unselect all" : "Select all"}
+          {selectedIds.length === allProjects.length
+            ? "Unselect all"
+            : "Select all"}
         </Button>
       </div>
 
@@ -350,7 +409,9 @@ export const ManagerPortfolioDashboard = () => {
         <>
           {/* KPI cards */}
           {isLoading ? (
-            <div style={{ display: "flex", justifyContent: "center", padding: 24 }}>
+            <div
+              style={{ display: "flex", justifyContent: "center", padding: 24 }}
+            >
               <CircularProgress size={28} />
             </div>
           ) : (
@@ -400,10 +461,16 @@ export const ManagerPortfolioDashboard = () => {
                 }}
               >
                 <ChartCard title="Delivery Health">
-                  <ReactECharts option={deliveryHealthOption} style={{ height: 220 }} />
+                  <ReactECharts
+                    option={deliveryHealthOption}
+                    style={{ height: 220 }}
+                  />
                 </ChartCard>
                 <ChartCard title="Estimation vs Real (hrs)">
-                  <ReactECharts option={estimationOption} style={{ height: 220 }} />
+                  <ReactECharts
+                    option={estimationOption}
+                    style={{ height: 220 }}
+                  />
                 </ChartCard>
               </div>
 
@@ -416,13 +483,16 @@ export const ManagerPortfolioDashboard = () => {
                       height: Math.max(
                         180,
                         Object.values(
-                          selectedIds.reduce<Record<string, boolean>>((acc, pid) => {
-                            (devPerfByProject[pid] ?? []).forEach(
-                              (d) => (acc[d.userId] = true)
-                            );
-                            return acc;
-                          }, {})
-                        ).length * 36
+                          selectedIds.reduce<Record<string, boolean>>(
+                            (acc, pid) => {
+                              (devPerfByProject[pid] ?? []).forEach(
+                                (d) => (acc[d.userId] = true),
+                              );
+                              return acc;
+                            },
+                            {},
+                          ),
+                        ).length * 36,
                       ),
                     }}
                   />
@@ -473,13 +543,21 @@ const KpiCard = ({
     >
       {label}
     </span>
-    <span style={{ fontSize: "1.5rem", fontWeight: 800, color, lineHeight: 1.1 }}>
+    <span
+      style={{ fontSize: "1.5rem", fontWeight: 800, color, lineHeight: 1.1 }}
+    >
       {value}
     </span>
   </div>
 );
 
-const ChartCard = ({ title, children }: { title: string; children: ReactNode }) => (
+const ChartCard = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) => (
   <div
     style={{
       background: "#fff",

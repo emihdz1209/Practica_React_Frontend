@@ -8,15 +8,20 @@ import {
   FormControl,
   CircularProgress,
 } from "@mui/material";
-import type { Proyecto } from "@/features/proyectos/types/proyecto";
 
 interface Prioridad {
   prioridadId: number;
   nombre: string;
 }
 
+interface ProjectOption {
+  projectId: string;
+  nombre: string;
+}
+
 interface Props {
   onSubmit: (data: {
+    projectId: string;
     titulo: string;
     descripcion: string;
     fechaLimite: string;
@@ -24,11 +29,18 @@ interface Props {
     tiempoEstimado: number | null;
   }) => void;
   isPending: boolean;
-  proyectos?: Proyecto[];
+  projects: ProjectOption[];
   prioridades: Prioridad[];
 }
 
+const getDefaultFechaLimite = () => {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T17:00`;
+};
+
 const EMPTY = {
+  projectId: "",
   titulo: "",
   descripcion: "",
   fechaLimite: "",
@@ -36,8 +48,19 @@ const EMPTY = {
   prioridadId: "",
 };
 
-export const CreateTareaForm = ({ onSubmit, isPending, prioridades }: Props) => {
-  const [form, setForm] = useState(EMPTY);
+export const CreateTareaForm = ({
+  onSubmit,
+  isPending,
+  projects,
+  prioridades,
+}: Props) => {
+  const [form, setForm] = useState(() => ({
+    ...EMPTY,
+    // Pre-select the project when only one is available
+    projectId: projects.length === 1 ? projects[0].projectId : "",
+    // Default deadline: today at 5:00 PM
+    fechaLimite: getDefaultFechaLimite(),
+  }));
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -45,19 +68,56 @@ export const CreateTareaForm = ({ onSubmit, isPending, prioridades }: Props) => 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.titulo.trim() || !form.fechaLimite || !form.prioridadId) return;
+    if (
+      !form.projectId ||
+      !form.titulo.trim() ||
+      !form.fechaLimite ||
+      !form.prioridadId
+    )
+      return;
     onSubmit({
+      projectId: form.projectId,
       titulo: form.titulo,
       descripcion: form.descripcion,
       fechaLimite: form.fechaLimite,
       prioridadId: parseInt(form.prioridadId),
-      tiempoEstimado: form.tiempoEstimado ? parseFloat(form.tiempoEstimado) : null,
+      tiempoEstimado: form.tiempoEstimado
+        ? parseFloat(form.tiempoEstimado)
+        : null,
     });
-    setForm(EMPTY);
+    setForm({
+      ...EMPTY,
+      projectId: projects.length === 1 ? projects[0].projectId : "",
+      fechaLimite: getDefaultFechaLimite(),
+    });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="modal-form" style={{ marginBottom: "24px" }}>
+    <form
+      onSubmit={handleSubmit}
+      className="modal-form"
+      style={{ marginBottom: "24px" }}
+    >
+      {/* Project selector — shown whenever more than one project is available */}
+      <FormControl size="small" required fullWidth>
+        <InputLabel>Proyecto</InputLabel>
+        <Select
+          name="projectId"
+          value={form.projectId}
+          onChange={(e) =>
+            setForm({ ...form, projectId: e.target.value as string })
+          }
+          label="Proyecto"
+          disabled={projects.length === 1}
+        >
+          {projects.map((p) => (
+            <MenuItem key={p.projectId} value={p.projectId}>
+              {p.nombre}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
       <TextField
         name="titulo"
         label="Título"
@@ -85,8 +145,12 @@ export const CreateTareaForm = ({ onSubmit, isPending, prioridades }: Props) => 
         onChange={handleChange}
         required
         size="small"
-        InputLabelProps={{ shrink: true }}
         fullWidth
+        slotProps={{
+          inputLabel: {
+            shrink: true,
+          },
+        }}
       />
       <div className="modal-form-row">
         <TextField
@@ -102,7 +166,9 @@ export const CreateTareaForm = ({ onSubmit, isPending, prioridades }: Props) => 
           <Select
             name="prioridadId"
             value={form.prioridadId}
-            onChange={(e) => setForm({ ...form, prioridadId: e.target.value as string })}
+            onChange={(e) =>
+              setForm({ ...form, prioridadId: e.target.value as string })
+            }
             label="Prioridad"
           >
             {prioridades.map((p) => (

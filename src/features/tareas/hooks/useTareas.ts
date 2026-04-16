@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getTareasByProyecto,
   getTareaById,
@@ -20,6 +20,25 @@ export const useTareas = (projectId?: string) => {
   });
 };
 
+export const useMultiProjectTareas = (projectIds: string[]) => {
+  const queries = useQueries({
+    queries: projectIds.map((pid) => ({
+      queryKey: ["tareas", pid],
+      queryFn: () => getTareasByProyecto(pid),
+      enabled: !!pid,
+    })),
+  });
+
+  const data: Tarea[] = [];
+  queries.forEach((q) => {
+    if (q.data) data.push(...q.data);
+  });
+
+  const isLoading = queries.some((q) => q.isLoading);
+
+  return { data, isLoading };
+};
+
 export const useTareaById = (taskId?: string) => {
   return useQuery({
     queryKey: ["tarea", taskId],
@@ -36,12 +55,13 @@ export const useTaskUsers = (taskId?: string) => {
   });
 };
 
-export const useCreateTarea = (projectId: string) => {
+export const useCreateTarea = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateTareaRequest) => createTarea(projectId, data),
-    onSuccess: () => {
+    mutationFn: ({ projectId, data }: { projectId: string; data: CreateTareaRequest }) =>
+      createTarea(projectId, data),
+    onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: ["tareas", projectId] });
     },
   });

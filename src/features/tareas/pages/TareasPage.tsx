@@ -1,20 +1,29 @@
 import { useEffect, useState } from "react";
-import { CircularProgress, Button, FormControl, Select, MenuItem } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
 import {
-  useTareas,
+  CircularProgress,
+  Button,
+  FormControl,
+  Select,
+  MenuItem,
+  Checkbox,
+  ListItemText,
+} from "@mui/material";
+import type { SelectChangeEvent } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useManagedProjects } from "@/features/dashboard/hooks/dashboard";
+import {
+  useMultiProjectTareas,
   useCreateTarea,
   useUpdateTareaStatus,
   useDeleteTarea,
 } from "@/features/tareas/hooks/useTareas";
-import { useEquipos } from "@/features/equipos/hooks/useEquipos";
-import { useProyectos } from "@/features/proyectos/hooks/useProyectos";
+import type { CreateTareaRequest, Tarea } from "@/features/tareas/types/tarea";
 import { CreateTareaForm } from "@/features/tareas/components/CreateTareaForm";
 import { TareaList } from "@/features/tareas/components/TareaList";
 import { TareasModal } from "@/features/tareas/components/TareasModal";
 import { NavBar } from "@/shared/pages/NavBar";
 import { AppModal } from "@/shared/components/AppModal";
-import type { Tarea } from "@/features/tareas/types/tarea";
 
 const PRIORIDADES = [
   { prioridadId: 1, nombre: "Alta" },
@@ -22,112 +31,75 @@ const PRIORIDADES = [
   { prioridadId: 3, nombre: "Baja" },
 ];
 
-const TEAM_STORAGE_KEY = "tareas.selectedTeamId";
-const PROJECT_STORAGE_KEY = "tareas.selectedProjectId";
-
-const readStoredValue = (key: string) => {
-  try {
-    return localStorage.getItem(key) ?? "";
-  } catch {
-    return "";
-  }
-};
-
-const persistStoredValue = (key: string, value: string) => {
-  try {
-    if (value) {
-      localStorage.setItem(key, value);
-      return;
-    }
-
-    localStorage.removeItem(key);
-  } catch {
-    // Ignore storage errors to keep filtering functional.
-  }
-};
 
 export const TareasPage = () => {
-  const [selectedTeamId, setSelectedTeamId] = useState<string>(() => readStoredValue(TEAM_STORAGE_KEY));
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(() => readStoredValue(PROJECT_STORAGE_KEY));
+  const { auth } = useAuth();
+  const userId = auth.user?.userId;
+
+  const { data: allProjects = [], isLoading: loadingProjects } = useManagedProjects(userId);
+
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [initialized, setInitialized] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  const { data: equipos } = useEquipos();
-  const { data: proyectos, isLoading: lp } = useProyectos(selectedTeamId || undefined);
-  const { data: tareas, isLoading: lt } = useTareas(selectedProjectId || undefined);
-
-  const createMutation = useCreateTarea(selectedProjectId);
-  const statusMutation = useUpdateTareaStatus(selectedProjectId);
-  const deleteMutation = useDeleteTarea(selectedProjectId);
-
+  // Select all projects as soon as they load
   useEffect(() => {
-    persistStoredValue(TEAM_STORAGE_KEY, selectedTeamId);
-  }, [selectedTeamId]);
-
-  useEffect(() => {
-    persistStoredValue(PROJECT_STORAGE_KEY, selectedProjectId);
-  }, [selectedProjectId]);
-
-  useEffect(() => {
-    setSelectedTaskId(null);
-  }, [selectedProjectId]);
-
-  useEffect(() => {
-    if (!equipos || !selectedTeamId) {
-      return;
+    if (!initialized && allProjects.length > 0) {
+      setSelectedIds(allProjects.map((p) => p.projectId));
+      setInitialized(true);
     }
+  }, [allProjects, initialized]);
 
-    const teamExists = equipos.some((eq) => eq.teamId === selectedTeamId);
-
-    if (!teamExists) {
-      setSelectedTeamId("");
-      setSelectedProjectId("");
-    }
-  }, [equipos, selectedTeamId]);
-
-  useEffect(() => {
-    if (!selectedProjectId) {
-      return;
-    }
-
-    if (!selectedTeamId) {
-      setSelectedProjectId("");
-      return;
-    }
-
-    if (!proyectos) {
-      return;
-    }
-
-    const projectExists = proyectos.some((project) => project.projectId === selectedProjectId);
-
-    if (!projectExists) {
-      setSelectedProjectId("");
-    }
-  }, [selectedProjectId, selectedTeamId, proyectos]);
-
-  // Reset project when team changes
-  const handleTeamChange = (teamId: string) => {
-    setSelectedTeamId(teamId);
-    setSelectedProjectId("");
+  const handleChange = (event: SelectChangeEvent<string[]>) => {
+    const value = event.target.value;
+    setSelectedIds(typeof value === "string" ? value.split(",") : value);
     setSelectedTaskId(null);
   };
 
+  const selectAll = () => {
+    setSelectedIds(allProjects.map((p) => p.projectId));
+    setSelectedTaskId(null);
+  };
+
+  const unselectAll = () => {
+    setSelectedIds([]);
+    setSelectedTaskId(null);
+  };
+
+  const nameMap: Record<string, string> = {};
+  allProjects.forEach((p) => (nameMap[p.projectId] = p.nombre));
+
+  // Fetch tasks for all selected projects in parallel
+  const { data: allTareas, isLoading: loadingTareas } = useMultiProjectTareas(selectedIds);
+
+  // Projects currently visible in the filter — used to populate the create form
+  const selectedProjects = allProjects.filter((p) => selectedIds.includes(p.projectId));
+
+  const createMutation = useCreateTarea();
+  // Pass undefined so mutations rely on global ["tareas"] invalidation
+  const statusMutation = useUpdateTareaStatus(undefined);
+  const deleteMutation = useDeleteTarea(undefined);
+
   const handleCreate = (data: {
+    projectId: string;
     titulo: string;
     descripcion: string;
     fechaLimite: string;
     prioridadId: number;
     tiempoEstimado: number | null;
   }) => {
-    const payload = {
+    const payload: CreateTareaRequest = {
       titulo: data.titulo,
       descripcion: data.descripcion,
       fechaLimite: data.fechaLimite,
       prioridadId: data.prioridadId,
       ...(data.tiempoEstimado !== null && { tiempoEstimado: data.tiempoEstimado }),
     };
-    createMutation.mutate(payload, { onSuccess: () => setCreateModalOpen(false) });
+    createMutation.mutate(
+      { projectId: data.projectId, data: payload },
+      { onSuccess: () => setCreateModalOpen(false) }
+    );
   };
 
   const handleDelete = (taskId: string) => deleteMutation.mutate(taskId);
@@ -139,7 +111,14 @@ export const TareasPage = () => {
   const handleStatusChange = (tarea: Tarea, newEstadoId: number) =>
     statusMutation.mutate({ taskId: tarea.taskId, estadoId: newEstadoId });
 
+  // Derive the projectId from the selected task so the modal can use it
+  const selectedTaskProjectId =
+    selectedTaskId != null
+      ? allTareas.find((t) => t.taskId === selectedTaskId)?.projectId
+      : undefined;
+
   const isSideModalOpen = Boolean(selectedTaskId);
+  const allSelected = selectedIds.length === allProjects.length && allProjects.length > 0;
 
   return (
     <div className="App">
@@ -154,7 +133,7 @@ export const TareasPage = () => {
           className="AddButton"
           startIcon={<AddIcon />}
           onClick={() => setCreateModalOpen(true)}
-          disabled={!selectedProjectId}
+          disabled={selectedIds.length === 0}
         >
           Nueva tarea
         </Button>
@@ -165,56 +144,64 @@ export const TareasPage = () => {
           <div className="tareas-board-container">
             {/* Filters */}
             <div className="filter-bar">
-              <span className="section-label" style={{ margin: 0 }}>Equipo</span>
-              <FormControl size="small" style={{ minWidth: 180 }}>
-                <Select
-                  value={selectedTeamId}
-                  displayEmpty
-                  onChange={(e) => handleTeamChange(e.target.value as string)}
-                >
-                  <MenuItem value="">
-                    <em style={{ fontStyle: "normal", color: "#A1A1AA" }}>Seleccionar</em>
-                  </MenuItem>
-                  {(equipos || []).map((eq) => (
-                    <MenuItem key={eq.teamId} value={eq.teamId}>{eq.nombre}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <span className="section-label" style={{ margin: 0 }}>Proyectos</span>
 
-              <span className="section-label" style={{ margin: 0 }}>Proyecto</span>
-              <FormControl size="small" style={{ minWidth: 180 }}>
-                <Select
-                  value={selectedProjectId}
-                  displayEmpty
-                  disabled={!selectedTeamId}
-                  onChange={(e) => setSelectedProjectId(e.target.value as string)}
-                >
-                  <MenuItem value="">
-                    <em style={{ fontStyle: "normal", color: "#A1A1AA" }}>Seleccionar</em>
-                  </MenuItem>
-                  {(proyectos || []).map((p) => (
-                    <MenuItem key={p.projectId} value={p.projectId}>{p.nombre}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              {loadingProjects ? (
+                <CircularProgress size={20} />
+              ) : (
+                <>
+                  <FormControl size="small" style={{ minWidth: 280, maxWidth: 480 }}>
+                    <Select
+                      multiple
+                      value={selectedIds}
+                      onChange={handleChange}
+                      renderValue={(sel) =>
+                        sel.length === 0
+                          ? "Ninguno seleccionado"
+                          : sel.length === allProjects.length
+                          ? "Todos los proyectos"
+                          : sel.map((id) => nameMap[id] ?? id).join(", ")
+                      }
+                      displayEmpty
+                    >
+                      {allProjects.map((p) => (
+                        <MenuItem key={p.projectId} value={p.projectId}>
+                          <Checkbox checked={selectedIds.includes(p.projectId)} size="small" />
+                          <ListItemText primary={p.nombre} />
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
 
-              {selectedProjectId && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={allSelected ? unselectAll : selectAll}
+                    style={{ textTransform: "none", fontSize: "0.75rem" }}
+                    disabled={allProjects.length === 0}
+                  >
+                    {allSelected ? "Desel. todo" : "Sel. todo"}
+                  </Button>
+                </>
+              )}
+
+              {selectedIds.length > 0 && (
                 <span className="filter-count">
-                  {(tareas || []).length} tarea{(tareas || []).length !== 1 ? "s" : ""}
+                  {allTareas.length} tarea{allTareas.length !== 1 ? "s" : ""}
                 </span>
               )}
             </div>
 
             {/* Kanban */}
-            {(lt || lp) ? (
+            {loadingTareas ? (
               <CircularProgress style={{ marginTop: 40 }} />
-            ) : !selectedProjectId ? (
+            ) : selectedIds.length === 0 ? (
               <p style={{ color: "var(--text-3)", fontSize: "0.875rem", marginTop: 24 }}>
-                Selecciona un equipo y proyecto para ver las tareas.
+                Selecciona al menos un proyecto para ver las tareas.
               </p>
             ) : (
               <TareaList
-                tareas={tareas || []}
+                tareas={allTareas}
                 onDelete={handleDelete}
                 onStatusChange={handleStatusChange}
                 onOpenDetails={handleOpenTaskDetails}
@@ -225,7 +212,7 @@ export const TareasPage = () => {
 
         <TareasModal
           taskId={selectedTaskId}
-          projectId={selectedProjectId || undefined}
+          projectId={selectedTaskProjectId}
           onClose={handleCloseTaskDetails}
         />
       </div>
@@ -235,6 +222,7 @@ export const TareasPage = () => {
         <CreateTareaForm
           onSubmit={handleCreate}
           isPending={createMutation.isPending}
+          projects={selectedProjects}
           prioridades={PRIORIDADES}
         />
       </AppModal>

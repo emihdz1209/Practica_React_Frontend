@@ -6,7 +6,6 @@ import { ROUTES } from "./routes";
 
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
-import { ManagerDashboardPage } from "@/features/dashboard/pages/ManagerDashboardPage";
 import { CreateUserPage } from "@/features/users/pages/CreateUserPage";
 import { EquiposPage } from "@/features/equipos/pages/EquiposPage";
 import { EquipoDetailPage } from "@/features/equipos/pages/EquipoDetailPage"; // 🔹 NUEVO
@@ -30,13 +29,7 @@ export const AppRouter = () => {
           path={ROUTES.dashboard}
           element={<ProtectedRoute><DashboardPage /></ProtectedRoute>}
         />
-
-        {/* 🔐 Manager Portfolio Dashboard */}
-        <Route
-          path={ROUTES.managerDashboard}
-          element={<ProtectedRoute><ManagerDashboardPage /></ProtectedRoute>}
-        />
-
+        
         {/* 🔐 Tareas */}
         <Route
           path={ROUTES.tareas}

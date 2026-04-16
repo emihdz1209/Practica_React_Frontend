@@ -5,7 +5,6 @@ import { CircularProgress } from "@mui/material";
 import { useEquipos } from "@/features/equipos/hooks/useEquipos";
 import { useAllProyectos } from "@/features/proyectos/hooks/useProyectos";
 import { NavBar } from "@/shared/pages/NavBar";
-import { GeneralDashboard } from "@/features/dashboard/components/GeneralDashboard";
 import { ManagerPortfolioDashboard } from "@/features/dashboard/components/ManagerPortfolioDashboard";
 
 
@@ -98,7 +97,7 @@ export const DashboardPage = () => {
               </div>
             )}
 
-            <div>
+            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", gap: "22px" }}>
             {/* Stat cards */}
             <div className="stat-row">
               {STATS.map(({ key, label, bg, border, num, sub, icon }) => (
@@ -110,11 +109,9 @@ export const DashboardPage = () => {
                   <span className="stat-card-label" style={{ color: sub }}>{label}</span>
                 </div>
               ))}
-
-              {/* Dashboard section */}
-              <ManagerPortfolioDashboard />
-
             </div>
+            {/* Dashboard section */}
+            <ManagerPortfolioDashboard />
           </div>
         </>
       )}

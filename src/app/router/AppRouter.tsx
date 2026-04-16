@@ -29,7 +29,7 @@ export const AppRouter = () => {
           path={ROUTES.dashboard}
           element={<ProtectedRoute><DashboardPage /></ProtectedRoute>}
         />
-
+        
         {/* 🔐 Tareas */}
         <Route
           path={ROUTES.tareas}

@@ -5,6 +5,9 @@ import { CircularProgress } from "@mui/material";
 import { useEquipos } from "@/features/equipos/hooks/useEquipos";
 import { useAllProyectos } from "@/features/proyectos/hooks/useProyectos";
 import { NavBar } from "@/shared/pages/NavBar";
+import { ManagerPortfolioDashboard } from "@/features/dashboard/components/ManagerPortfolioDashboard";
+
+
 
 const STATS = [
   { key: "activas",   label: "Proyectos activos", bg: "#FFFBEB", border: "#FDE68A", num: "#B45309", sub: "#78350F", icon: "⚡" },
@@ -67,45 +70,49 @@ export const DashboardPage = () => {
         <CircularProgress style={{ marginTop: 40 }} />
       ) : (
         <>
-          {/* Stat cards */}
-          <div className="stat-row">
-            {STATS.map(({ key, label, bg, border, num, sub, icon }) => (
-              <div key={key} className="stat-card" style={{ background: bg, borderColor: border }}>
-                <span className="stat-card-icon" style={{ color: num }}>{icon}</span>
-                <span className="stat-card-value" style={{ color: num }}>
-                  {values[key as keyof typeof values]}
-                </span>
-                <span className="stat-card-label" style={{ color: sub }}>{label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Projects table */}
-          {proyectos.length > 0 && (
-            <div className="page-section">
-              <span className="section-label">Proyectos en curso</span>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Proyecto</th>
-                    <th>Progreso</th>
-                    <th>Inicio</th>
-                    <th>Fin</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {proyectos.slice(0, 10).map((p) => (
-                    <tr key={p.projectId}>
-                      <td className="cell-primary">{p.nombre}</td>
-                      <td><ProgressBadge value={p.progreso || 0} /></td>
-                      <td>{p.fechaInicio ? new Date(p.fechaInicio).toLocaleDateString("es-MX") : "—"}</td>
-                      <td>{p.fechaFin    ? new Date(p.fechaFin).toLocaleDateString("es-MX")    : "—"}</td>
+            {/* Projects table */}
+            {proyectos.length > 0 && (
+              <div className="page-section">
+                <span className="section-label">Proyectos en curso</span>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Proyecto</th>
+                      <th>Progreso</th>
+                      <th>Inicio</th>
+                      <th>Fin</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {proyectos.slice(0, 10).map((p) => (
+                      <tr key={p.projectId}>
+                        <td className="cell-primary">{p.nombre}</td>
+                        <td><ProgressBadge value={p.progreso || 0} /></td>
+                        <td>{p.fechaInicio ? new Date(p.fechaInicio).toLocaleDateString("es-MX") : "—"}</td>
+                        <td>{p.fechaFin    ? new Date(p.fechaFin).toLocaleDateString("es-MX")    : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", gap: "22px" }}>
+            {/* Stat cards */}
+            <div className="stat-row">
+              {STATS.map(({ key, label, bg, border, num, sub, icon }) => (
+                <div key={key} className="stat-card" style={{ background: bg, borderColor: border }}>
+                  <span className="stat-card-icon" style={{ color: num }}>{icon}</span>
+                  <span className="stat-card-value" style={{ color: num }}>
+                    {values[key as keyof typeof values]}
+                  </span>
+                  <span className="stat-card-label" style={{ color: sub }}>{label}</span>
+                </div>
+              ))}
             </div>
-          )}
+            {/* Dashboard section */}
+            <ManagerPortfolioDashboard />
+          </div>
         </>
       )}
     </div>

@@ -481,7 +481,7 @@ export const ProjectDashboard = ({ projectId }: Props) => {
 
         {/* Row: Tasks por Dev/Sprint + Horas por Dev/Sprint */}
         <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 8 }}
+            style={{ display: "grid", gridTemplateColumns: "2fr 2fr 2fr", gap: 16, marginBottom: 8 }}
         >
             <ChartCard title="Tasks Terminadas por Desarrollador / Sprint">
             {devPerf.length > 0 && allSprintNames.length > 0 ? (

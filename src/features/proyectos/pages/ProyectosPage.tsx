@@ -1,30 +1,22 @@
 /// src/features/proyectos/pages/ProyectosPage.tsx
 
 import { useEffect, useState } from "react";
-import {
-  TextField,
-  Button,
-  CircularProgress,
-  MenuItem,
-  Select,
-  FormControl,
-  IconButton,
-  Tooltip,
-} from "@mui/material";
+import { Button } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import CloseIcon from "@mui/icons-material/Close";
 import { useEquipos } from "@/features/equipos/hooks/useEquipos";
 import {
   useProyectos,
   useCreateProyecto,
-  useUpdateProyecto,
-  useDeleteProyecto,
 } from "@/features/proyectos/hooks/useProyectos";
 import type { Proyecto } from "@/features/proyectos/types/proyecto";
+import {
+  CreateProyectoModal,
+  type ProyectoCreateFormState,
+} from "@/features/proyectos/components/CreateProyectoModal";
+import { ProyectosFilters } from "@/features/proyectos/components/ProyectosFilters";
+import { ProyectosTable } from "@/features/proyectos/components/ProyectosTable";
+import { ProyectoSideModal } from "@/features/proyectos/components/ProyectoSideModal";
 import { NavBar } from "@/shared/pages/NavBar";
-import { AppModal } from "@/shared/components/AppModal";
 import { ProjectDashboard } from "@/features/proyectos/components/ProjectDashboard";
 
 // ── Persistence helpers ──────────────────────────────────────────────────────
@@ -52,275 +44,11 @@ const persistStoredValue = (key: string, value: string): void => {
   }
 };
 
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const EMPTY = { nombre: "", descripcion: "", fechaInicio: "", fechaFin: "" };
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-const fmtDate = (str: string | null) =>
-  str ? new Date(str).toLocaleDateString("es-MX") : "—";
-
-const toDatetimeLocal = (str: string | null): string => {
-  if (!str) return "";
-  return str.slice(0, 16);
-};
-
-const progressColor = (pct: number) =>
-  pct >= 75 ? "#16A34A" : pct >= 40 ? "#2563EB" : "#D97706";
-
-// ── ProyectoSideModal ─────────────────────────────────────────────────────────
-
-interface SideModalProps {
-  project: Proyecto | null;
-  onClose: () => void;
-  onProjectDeleted: (projectId: string) => void;
-  teamId: string;
-}
-
-const ProyectoSideModal = ({ project, onClose, onProjectDeleted, teamId }: SideModalProps) => {
-  const isOpen = Boolean(project);
-
-  const [editing, setEditing] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [form, setForm] = useState({
-    nombre: "",
-    descripcion: "",
-    fechaInicio: "",
-    fechaFin: "",
-  });
-
-  const updateMutation = useUpdateProyecto(teamId);
-  const deleteMutation = useDeleteProyecto(teamId);
-
-  // Sync form when selected project changes
-  useEffect(() => {
-    if (!project) {
-      setEditing(false);
-      setConfirmDelete(false);
-      return;
-    }
-    setForm({
-      nombre: project.nombre,
-      descripcion: project.descripcion ?? "",
-      fechaInicio: toDatetimeLocal(project.fechaInicio),
-      fechaFin: toDatetimeLocal(project.fechaFin),
-    });
-    setEditing(false);
-    setConfirmDelete(false);
-  }, [project]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!project || !form.nombre.trim()) return;
-    updateMutation.mutate(
-      {
-        projectId: project.projectId,
-        data: {
-          nombre: form.nombre,
-          descripcion: form.descripcion,
-          fechaInicio: form.fechaInicio || null,
-          fechaFin: form.fechaFin || null,
-        },
-      },
-      { onSuccess: () => setEditing(false) }
-    );
-  };
-
-  const handleDelete = () => {
-    if (!project) return;
-    deleteMutation.mutate(project.projectId, {
-      onSuccess: () => {
-        onProjectDeleted(project.projectId);
-        onClose();
-      },
-    });
-  };
-
-  const pct = project?.progreso ?? 0;
-
-  return (
-    <aside
-      className={`tareas-side-modal ${isOpen ? "tareas-side-modal--open" : ""}`}
-      aria-hidden={!isOpen}
-      aria-label="Detalle de proyecto"
-    >
-      <div className="tareas-side-modal-inner">
-        {/* Header */}
-        <div className="tareas-side-modal-header">
-          <div>
-            <span className="task-detail-label">Detalle de proyecto</span>
-            <h3 className="tareas-side-modal-title">
-              {project ? project.nombre : "Selecciona un proyecto"}
-            </h3>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="app-modal-close-btn"
-            aria-label="Cerrar panel"
-          >
-            <CloseIcon />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="tareas-side-modal-body">
-          {!project ? (
-            <p className="task-detail-empty">Selecciona un proyecto para ver su detalle.</p>
-          ) : !editing ? (
-            /* ── Detail view ── */
-            <div className="task-detail-content">
-              {/* Progress */}
-              <div className="task-detail-section">
-                <span className="task-detail-label">Progreso</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
-                  <div className="progress-track" style={{ flex: 1 }}>
-                    <div
-                      className="progress-fill"
-                      style={{ width: `${pct}%`, background: progressColor(pct) }}
-                    />
-                  </div>
-                  <span style={{ fontWeight: 700, color: progressColor(pct), minWidth: 36, fontSize: "0.88rem" }}>
-                    {pct}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div className="task-detail-section">
-                <span className="task-detail-label">Descripción</span>
-                <p className="task-detail-description" style={{ marginTop: 4 }}>
-                  {project.descripcion || "Sin descripción"}
-                </p>
-              </div>
-
-              {/* Dates */}
-              <div className="task-detail-section">
-                <span className="task-detail-label">Fechas</span>
-                <div className="task-system-meta" style={{ marginTop: 4 }}>
-                  <p className="task-detail-description">
-                    Inicio: {fmtDate(project.fechaInicio)}
-                  </p>
-                  <p className="task-detail-description">
-                    Fin: {fmtDate(project.fechaFin)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<EditIcon />}
-                  onClick={() => setEditing(true)}
-                  size="small"
-                >
-                  Editar
-                </Button>
-
-                {!confirmDelete ? (
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={<DeleteIcon />}
-                    onClick={() => setConfirmDelete(true)}
-                    size="small"
-                  >
-                    Eliminar
-                  </Button>
-                ) : (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "0.8rem", color: "var(--text-2)" }}>
-                      ¿Confirmar eliminación?
-                    </span>
-                    <Button
-                      variant="contained"
-                      color="error"
-                      size="small"
-                      onClick={handleDelete}
-                      disabled={deleteMutation.isPending}
-                    >
-                      {deleteMutation.isPending ? <CircularProgress size={14} /> : "Sí, eliminar"}
-                    </Button>
-                    <Button
-                      variant="text"
-                      size="small"
-                      onClick={() => setConfirmDelete(false)}
-                    >
-                      Cancelar
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            /* ── Edit form ── */
-            <form onSubmit={handleSave} className="task-edit-form">
-              <TextField
-                name="nombre"
-                label="Nombre del proyecto"
-                value={form.nombre}
-                onChange={handleChange}
-                required
-                size="small"
-                fullWidth
-              />
-              <TextField
-                name="descripcion"
-                label="Descripción"
-                value={form.descripcion}
-                onChange={handleChange}
-                multiline
-                rows={3}
-                size="small"
-                fullWidth
-              />
-              <TextField
-                name="fechaInicio"
-                label="Fecha inicio"
-                type="datetime-local"
-                value={form.fechaInicio}
-                onChange={handleChange}
-                size="small"
-                fullWidth
-                slotProps={{ inputLabel: { shrink: true } }}
-              />
-              <TextField
-                name="fechaFin"
-                label="Fecha fin"
-                type="datetime-local"
-                value={form.fechaFin}
-                onChange={handleChange}
-                size="small"
-                fullWidth
-                slotProps={{ inputLabel: { shrink: true } }}
-              />
-
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <Tooltip title="Cancelar edición">
-                  <IconButton onClick={() => setEditing(false)} size="small">
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Button
-                  type="submit"
-                  className="AddButton"
-                  disabled={updateMutation.isPending}
-                >
-                  {updateMutation.isPending ? <CircularProgress size={18} /> : "Guardar cambios"}
-                </Button>
-              </div>
-            </form>
-          )}
-        </div>
-      </div>
-    </aside>
-  );
+const EMPTY: ProyectoCreateFormState = {
+  nombre: "",
+  descripcion: "",
+  fechaInicio: "",
+  fechaFin: "",
 };
 
 // ── ProyectosPage ─────────────────────────────────────────────────────────────
@@ -429,148 +157,26 @@ export const ProyectosPage = () => {
       {/* Main layout with side modal */}
       <div className={`tareas-layout ${isSideModalOpen ? "tareas-layout--with-panel" : ""}`}>
         <div className="tareas-main">
-          {/* Filters */}
-          <div className="filter-bar">
-            <span className="section-label" style={{ margin: 0 }}>
-              Filtrar por equipo
-            </span>
-            <FormControl size="small" style={{ minWidth: 200 }}>
-              <Select
-                value={selectedTeamId}
-                displayEmpty
-                onChange={(e) => handleTeamChange(e.target.value)}
-              >
-                <MenuItem value="">
-                  <em style={{ fontStyle: "normal", color: "#A1A1AA" }}>Seleccionar equipo</em>
-                </MenuItem>
-                {(equipos || []).map((eq) => (
-                  <MenuItem key={eq.teamId} value={eq.teamId}>
-                    {eq.nombre}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          <ProyectosFilters
+            selectedTeamId={selectedTeamId}
+            selectedProjectId={selectedProjectId}
+            equipos={equipos}
+            proyectos={proyectos}
+            onTeamChange={handleTeamChange}
+            onProjectChange={setSelectedProjectId}
+          />
 
-            {selectedTeamId && (
-              <>
-                <span className="section-label" style={{ margin: "0 0 0 16px" }}>
-                  Dashboard del proyecto
-                </span>
-                <FormControl size="small" style={{ minWidth: 220 }}>
-                  <Select
-                    value={selectedProjectId}
-                    displayEmpty
-                    onChange={(e) => setSelectedProjectId(e.target.value)}
-                  >
-                    <MenuItem value="">
-                      <em style={{ fontStyle: "normal", color: "#A1A1AA" }}>Seleccionar proyecto</em>
-                    </MenuItem>
-                    {(proyectos || []).map((p) => (
-                      <MenuItem key={p.projectId} value={p.projectId}>
-                        {p.nombre}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </>
-            )}
-          </div>
-
-          {/* Projects table */}
-          <div style={{ width: "100%" }}>
-            <span className="section-label">
-              Proyectos registrados · {(proyectos || []).length}
-            </span>
-
-            {loadingEquipos || loadingProyectos ? (
-              <CircularProgress />
-            ) : !selectedTeamId ? (
-              <p style={{ color: "var(--text-3)", fontSize: "0.875rem", marginTop: 24 }}>
-                Selecciona un equipo para ver sus proyectos.
-              </p>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Nombre</th>
-                    <th>Descripción</th>
-                    <th>Progreso</th>
-                    <th>Inicio</th>
-                    <th>Fin</th>
-                    <th>Dashboard</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(proyectos || []).map((p) => {
-                    const pct = p.progreso || 0;
-                    const isActive = p.projectId === selectedProjectId;
-                    const isDetailOpen = detailProject?.projectId === p.projectId;
-                    return (
-                      <tr
-                        key={p.projectId}
-                        style={isActive ? { background: "var(--accent-subtle)" } : undefined}
-                      >
-                        <td className="cell-primary">
-                          <button
-                            onClick={() =>
-                              setDetailProject(isDetailOpen ? null : p)
-                            }
-                            style={{
-                              background: "none",
-                              border: "none",
-                              padding: 0,
-                              cursor: "pointer",
-                              fontWeight: 600,
-                              color: isDetailOpen ? "var(--accent)" : "var(--text-1)",
-                              fontSize: "inherit",
-                              textDecoration: "underline",
-                              textDecorationStyle: "dotted",
-                              textUnderlineOffset: 3,
-                            }}
-                          >
-                            {p.nombre}
-                          </button>
-                        </td>
-                        <td>{p.descripcion || "—"}</td>
-                        <td>
-                          <div className="progress-wrap">
-                            <div className="progress-track">
-                              <div
-                                className="progress-fill"
-                                style={{ width: `${pct}%`, background: progressColor(pct) }}
-                              />
-                            </div>
-                            <span className="progress-label">{pct}%</span>
-                          </div>
-                        </td>
-                        <td>{fmtDate(p.fechaInicio)}</td>
-                        <td>{fmtDate(p.fechaFin)}</td>
-                        <td>
-                          <button
-                            onClick={() =>
-                              setSelectedProjectId(isActive ? "" : p.projectId)
-                            }
-                            style={{
-                              fontSize: "0.75rem",
-                              padding: "4px 10px",
-                              border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
-                              borderRadius: "var(--r-sm)",
-                              background: isActive ? "var(--accent-subtle)" : "transparent",
-                              color: isActive ? "var(--accent)" : "var(--text-2)",
-                              cursor: "pointer",
-                              fontWeight: isActive ? 600 : 400,
-                            }}
-                          >
-                            {isActive ? "Cerrar" : "Ver"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
+          <ProyectosTable
+            isLoading={loadingEquipos || loadingProyectos}
+            selectedTeamId={selectedTeamId}
+            selectedProjectId={selectedProjectId}
+            detailProjectId={detailProject?.projectId || null}
+            proyectos={proyectos}
+            onDetailProjectChange={setDetailProject}
+            onDashboardProjectChange={(projectId) => {
+              setSelectedProjectId(projectId === selectedProjectId ? "" : projectId);
+            }}
+          />
 
           {/* Dashboard section */}
           {selectedProjectId && selectedProject && (
@@ -610,62 +216,14 @@ export const ProyectosPage = () => {
       </div>
 
       {/* Create project modal */}
-      <AppModal
+      <CreateProyectoModal
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        title="Nuevo proyecto"
-      >
-        <form onSubmit={handleSubmit} className="modal-form">
-          <TextField
-            name="nombre"
-            label="Nombre del proyecto"
-            value={form.nombre}
-            onChange={handleChange}
-            required
-            size="small"
-            fullWidth
-          />
-          <TextField
-            name="descripcion"
-            label="Descripción"
-            value={form.descripcion}
-            onChange={handleChange}
-            multiline
-            rows={2}
-            size="small"
-            fullWidth
-          />
-          <div className="modal-form-row">
-            <TextField
-              name="fechaInicio"
-              label="Fecha inicio"
-              type="datetime-local"
-              value={form.fechaInicio}
-              onChange={handleChange}
-              size="small"
-              slotProps={{ inputLabel: { shrink: true } }}
-            />
-            <TextField
-              name="fechaFin"
-              label="Fecha fin"
-              type="datetime-local"
-              value={form.fechaFin}
-              onChange={handleChange}
-              size="small"
-              slotProps={{ inputLabel: { shrink: true } }}
-            />
-          </div>
-          <Button
-            type="submit"
-            variant="contained"
-            className="AddButton"
-            disabled={createMutation.isPending}
-            fullWidth
-          >
-            {createMutation.isPending ? <CircularProgress size={18} /> : "Crear proyecto"}
-          </Button>
-        </form>
-      </AppModal>
+        form={form}
+        onChange={handleChange}
+        onSubmit={handleSubmit}
+        isPending={createMutation.isPending}
+      />
     </div>
   );
 };

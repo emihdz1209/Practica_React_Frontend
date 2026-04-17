@@ -1,20 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  CircularProgress,
-  Button,
-  TextField,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-} from "@mui/material";
+import { CircularProgress } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import DeleteIcon from "@mui/icons-material/Delete";
 import { useProjectSprints } from "@/features/proyectos/hooks/useProyectos";
 import { useTaskPriorities } from "@/features/taskPriorities/taskPriorities/hooks/useTaskPriorities";
 import { useTaskStatuses } from "@/features/taskStatuses/hooks/useTaskStatuses";
 import { useUsers } from "@/features/users/hooks/useUsers";
-import type { TaskStatus } from "@/features/taskStatuses/types/taskStatus";
 import {
   useAssignTaskUser,
   useRemoveTaskUser,
@@ -23,89 +13,21 @@ import {
   useUpdateTarea,
   useUpdateTareaStatus,
 } from "@/features/tareas/hooks/useTareas";
-import type { TaskPriority } from "@/features/taskPriorities/taskPriorities/types/taskPriority";
 import type { UpdateTareaRequest } from "@/features/tareas/types/tarea";
-
-const formatDisplayDateTime = (value: string | null) => {
-  if (!value) {
-    return "—";
-  }
-
-  const parsed = new Date(value);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return parsed.toLocaleString("es-MX", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
-const toDateTimeLocalValue = (value: string | null) => {
-  if (!value) {
-    return "";
-  }
-
-  const parsed = new Date(value);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return value.slice(0, 16);
-  }
-
-  const shifted = new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60000);
-  return shifted.toISOString().slice(0, 16);
-};
-
-const toApiDateTime = (value: string) => (value.length === 16 ? `${value}:00` : value);
-
-const normalizeId = (value: string | null | undefined) =>
-  (value || "").replace(/-/g, "").toLowerCase();
-
-const FALLBACK_STATUSES: Array<{ id: number; nombre: string }> = [
-  { id: 1, nombre: "Pendiente" },
-  { id: 2, nombre: "En progreso" },
-  { id: 3, nombre: "Completada" },
-  { id: 4, nombre: "Cancelada" },
-];
-
-const resolvePriorityId = (priority: TaskPriority) => {
-  const withAlternativeId = priority as TaskPriority & { id?: number };
-  const id = withAlternativeId.prioridadId ?? withAlternativeId.id;
-  return typeof id === "number" ? id : null;
-};
-
-const resolveStatusId = (status: TaskStatus) => {
-  const withAlternativeId = status as TaskStatus & { estadoId?: number };
-  const id = withAlternativeId.id ?? withAlternativeId.estadoId;
-  return typeof id === "number" ? id : null;
-};
-
-interface TaskEditFormState {
-  titulo: string;
-  descripcion: string;
-  fechaLimite: string;
-  prioridadId: string;
-  estadoId: string;
-  sprintId: string;
-  tiempoEstimado: string;
-  tiempoReal: string;
-}
-
-const EMPTY_FORM: TaskEditFormState = {
-  titulo: "",
-  descripcion: "",
-  fechaLimite: "",
-  prioridadId: "",
-  estadoId: "",
-  sprintId: "",
-  tiempoEstimado: "",
-  tiempoReal: "",
-};
+import { TareaEditFormSection } from "@/features/tareas/components/tareasModal/TareaEditFormSection";
+import { TaskAssigneesSection } from "@/features/tareas/components/tareasModal/TaskAssigneesSection";
+import {
+  EMPTY_FORM,
+  type TaskEditFormState,
+} from "@/features/tareas/components/tareasModal/types";
+import {
+  FALLBACK_STATUSES,
+  normalizeId,
+  resolvePriorityId,
+  resolveStatusId,
+  toApiDateTime,
+  toDateTimeLocalValue,
+} from "@/features/tareas/components/tareasModal/tareasModalUtils";
 
 interface TareasModalProps {
   taskId: string | null;
@@ -238,11 +160,9 @@ export const TareasModal = ({ taskId, projectId, onClose }: TareasModalProps) =>
     }
   }, [availableUsers, selectedUserId]);
 
-  const handleFormValueChange =
-    (field: keyof TaskEditFormState) =>
-    (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      setForm((current) => ({ ...current, [field]: event.target.value }));
-    };
+  const handleFormValueChange = (field: keyof TaskEditFormState, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
 
   const handleSaveChanges = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -371,217 +291,39 @@ export const TareasModal = ({ taskId, projectId, onClose }: TareasModalProps) =>
             </p>
           ) : (
             <div className="task-detail-content">
-              <form className="task-edit-form" onSubmit={handleSaveChanges}>
-                <TextField
-                  name="titulo"
-                  label="Título"
-                  size="small"
-                  fullWidth
-                  required
-                  value={form.titulo}
-                  onChange={handleFormValueChange("titulo")}
-                />
+              <TareaEditFormSection
+                form={form}
+                projectId={projectId}
+                sprints={sprints}
+                sprintsLoading={sprintsLoading}
+                prioritiesLoading={prioritiesLoading}
+                statusesLoading={statusesLoading}
+                taskPriorities={taskPriorities}
+                statusOptions={statusOptions}
+                saveError={saveError}
+                saveFeedback={saveFeedback}
+                isSaving={isSaving}
+                fechaCreacion={tareaDetalle.fechaCreacion}
+                fechaFinalizacion={tareaDetalle.fechaFinalizacion}
+                onSubmit={handleSaveChanges}
+                onFieldChange={handleFormValueChange}
+              />
 
-                <TextField
-                  name="descripcion"
-                  label="Descripción"
-                  size="small"
-                  fullWidth
-                  multiline
-                  rows={3}
-                  value={form.descripcion}
-                  onChange={handleFormValueChange("descripcion")}
-                />
-
-                <div className="task-edit-grid">
-                  <TextField
-                    name="fechaLimite"
-                    label="Fecha límite"
-                    type="datetime-local"
-                    size="small"
-                    required
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    value={form.fechaLimite}
-                    onChange={handleFormValueChange("fechaLimite")}
-                  />
-
-                  <FormControl size="small" required>
-                    <InputLabel>Prioridad</InputLabel>
-                    <Select
-                      label="Prioridad"
-                      value={form.prioridadId}
-                      onChange={(event) => setForm((current) => ({
-                        ...current,
-                        prioridadId: event.target.value as string,
-                      }))}
-                    >
-                      {prioritiesLoading && (
-                        <MenuItem value="" disabled>Cargando prioridades...</MenuItem>
-                      )}
-
-                      {taskPriorities.map((priority) => (
-                        <MenuItem key={priority.prioridadId} value={String(priority.prioridadId)}>
-                          {priority.nombre}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  <FormControl size="small" required>
-                    <InputLabel>Estado</InputLabel>
-                    <Select
-                      label="Estado"
-                      value={form.estadoId}
-                      onChange={(event) => setForm((current) => ({
-                        ...current,
-                        estadoId: event.target.value as string,
-                      }))}
-                    >
-                      {statusesLoading && (
-                        <MenuItem value="" disabled>Cargando estados...</MenuItem>
-                      )}
-
-                      {statusOptions.map((status) => (
-                        <MenuItem key={status.id} value={String(status.id)}>
-                          {status.nombre}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  <FormControl size="small" disabled={!projectId}>
-                    <InputLabel>Sprint</InputLabel>
-                    <Select
-                      label="Sprint"
-                      value={form.sprintId}
-                      onChange={(event) => setForm((current) => ({
-                        ...current,
-                        sprintId: event.target.value as string,
-                      }))}
-                    >
-                      <MenuItem value="">Sin sprint</MenuItem>
-
-                      {sprintsLoading && (
-                        <MenuItem value="" disabled>Cargando sprints...</MenuItem>
-                      )}
-
-                      {sprints.map((sprint) => (
-                        <MenuItem key={sprint.sprintId} value={sprint.sprintId}>
-                          {sprint.nombre}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  <TextField
-                    name="tiempoEstimado"
-                    label="Tiempo estimado (hrs)"
-                    type="number"
-                    size="small"
-                    slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
-                    value={form.tiempoEstimado}
-                    onChange={handleFormValueChange("tiempoEstimado")}
-                  />
-
-                  <TextField
-                    name="tiempoReal"
-                    label="Tiempo real (hrs)"
-                    type="number"
-                    size="small"
-                    slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
-                    value={form.tiempoReal}
-                    onChange={handleFormValueChange("tiempoReal")}
-                  />
-                </div>
-
-                <div className="task-detail-section">
-                  <span className="task-detail-label">Fechas del sistema</span>
-                  <div className="task-system-meta">
-                    <p className="task-detail-description">
-                      Creada: {formatDisplayDateTime(tareaDetalle.fechaCreacion)}
-                    </p>
-                    <p className="task-detail-description">
-                      Finalizada: {formatDisplayDateTime(tareaDetalle.fechaFinalizacion)}
-                    </p>
-                  </div>
-                </div>
-
-                {saveError && <p className="task-form-feedback task-form-feedback--error">{saveError}</p>}
-                {saveFeedback && <p className="task-form-feedback task-form-feedback--success">{saveFeedback}</p>}
-
-                <div className="task-edit-actions">
-                  <Button type="submit" className="AddButton" disabled={isSaving}>
-                    {isSaving ? <CircularProgress size={18} /> : "Guardar cambios"}
-                  </Button>
-                </div>
-              </form>
-
-              <div className="task-detail-section">
-                <span className="task-detail-label">Usuarios asignados</span>
-
-                <div className="task-assignee-toolbar">
-                  <FormControl size="small" fullWidth>
-                    <InputLabel>Asignar usuario</InputLabel>
-                    <Select
-                      label="Asignar usuario"
-                      value={selectedUserId}
-                      disabled={usersLoading || availableUsers.length === 0 || assignTaskUserMutation.isPending}
-                      onChange={(event) => setSelectedUserId(event.target.value as string)}
-                    >
-                      {availableUsers.length === 0 ? (
-                        <MenuItem value="" disabled>
-                          No hay usuarios disponibles
-                        </MenuItem>
-                      ) : (
-                        availableUsers.map((user) => (
-                          <MenuItem key={user.userId} value={user.userId}>
-                            {user.primerNombre} {user.apellido}
-                          </MenuItem>
-                        ))
-                      )}
-                    </Select>
-                  </FormControl>
-
-                  <Button
-                    type="button"
-                    className="AddButton"
-                    disabled={!selectedUserId || assignTaskUserMutation.isPending}
-                    onClick={handleAssignUser}
-                  >
-                    {assignTaskUserMutation.isPending ? <CircularProgress size={18} /> : "Asignar"}
-                  </Button>
-                </div>
-
-                {assignError && <p className="task-form-feedback task-form-feedback--error">{assignError}</p>}
-
-                {assigneesLoading ? (
-                  <div className="task-assignees-loading">
-                    <CircularProgress size={22} />
-                  </div>
-                ) : assigneesError ? (
-                  <p className="task-detail-feedback">No se pudieron cargar los usuarios asignados.</p>
-                ) : assignedUsers.length === 0 ? (
-                  <p className="task-detail-empty">Esta tarea no tiene usuarios asignados.</p>
-                ) : (
-                  <ul className="task-assignee-list">
-                    {assignedUsers.map((assigned) => (
-                      <li key={assigned.userId} className="task-assignee-item">
-                        <span className="task-detail-value">{assigned.nombre || assigned.userId}</span>
-                        <button
-                          type="button"
-                          className="task-assignee-remove-btn"
-                          title="Remover usuario"
-                          aria-label={`Remover ${assigned.nombre || assigned.userId}`}
-                          disabled={removeTaskUserMutation.isPending && removingUserId === assigned.userId}
-                          onClick={() => handleRemoveUser(assigned.userId)}
-                        >
-                          <DeleteIcon />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <TaskAssigneesSection
+                availableUsers={availableUsers}
+                selectedUserId={selectedUserId}
+                assignError={assignError}
+                assigneesLoading={assigneesLoading}
+                assigneesError={assigneesError}
+                usersLoading={usersLoading}
+                isAssigning={assignTaskUserMutation.isPending}
+                isRemoving={removeTaskUserMutation.isPending}
+                removingUserId={removingUserId}
+                assignedUsers={assignedUsers}
+                onAssignUser={handleAssignUser}
+                onSelectUser={setSelectedUserId}
+                onRemoveUser={handleRemoveUser}
+              />
             </div>
           )}
         </div>

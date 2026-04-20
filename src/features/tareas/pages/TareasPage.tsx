@@ -31,10 +31,44 @@ const PRIORIDADES = [
   { prioridadId: 3, nombre: "Baja" },
 ];
 
+const PROJECT_SELECTION_STORAGE_PREFIX = "tareas.selectedProjectIds";
+
+const getProjectSelectionStorageKey = (userId?: string) =>
+  `${PROJECT_SELECTION_STORAGE_PREFIX}.${userId || "anonymous"}`;
+
+const readStoredProjectSelection = (storageKey: string): string[] | null => {
+  try {
+    const rawValue = localStorage.getItem(storageKey);
+
+    if (rawValue === null) {
+      return null;
+    }
+
+    const parsedValue: unknown = JSON.parse(rawValue);
+
+    if (!Array.isArray(parsedValue)) {
+      return null;
+    }
+
+    return parsedValue.filter((value): value is string => typeof value === "string");
+  } catch {
+    return null;
+  }
+};
+
+const persistProjectSelection = (storageKey: string, selectedIds: string[]) => {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(selectedIds));
+  } catch {
+    // Ignore storage errors to keep filters functional.
+  }
+};
+
 
 export const TareasPage = () => {
   const { auth } = useAuth();
   const userId = auth.user?.userId;
+  const storageKey = getProjectSelectionStorageKey(userId);
 
   const { data: allProjects = [], isLoading: loadingProjects } = useManagedProjects(userId);
 
@@ -43,13 +77,40 @@ export const TareasPage = () => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  // Select all projects as soon as they load
   useEffect(() => {
-    if (!initialized && allProjects.length > 0) {
-      setSelectedIds(allProjects.map((p) => p.projectId));
-      setInitialized(true);
+    setInitialized(false);
+    setSelectedIds([]);
+    setSelectedTaskId(null);
+  }, [storageKey]);
+
+  // Initialize selected projects from persisted selection; fallback to all projects.
+  useEffect(() => {
+    if (loadingProjects || initialized || allProjects.length === 0) {
+      return;
     }
-  }, [allProjects, initialized]);
+
+    const storedSelection = readStoredProjectSelection(storageKey);
+
+    if (storedSelection === null) {
+      setSelectedIds(allProjects.map((project) => project.projectId));
+      setInitialized(true);
+      return;
+    }
+
+    const allowedProjectIds = new Set(allProjects.map((project) => project.projectId));
+    const validStoredSelection = storedSelection.filter((projectId) => allowedProjectIds.has(projectId));
+
+    setSelectedIds(validStoredSelection);
+    setInitialized(true);
+  }, [allProjects, initialized, loadingProjects, storageKey]);
+
+  useEffect(() => {
+    if (!initialized) {
+      return;
+    }
+
+    persistProjectSelection(storageKey, selectedIds);
+  }, [initialized, selectedIds, storageKey]);
 
   const handleChange = (event: SelectChangeEvent<string[]>) => {
     const value = event.target.value;

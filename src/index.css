@@ -286,6 +286,7 @@ table tr:hover td {
   gap: 12px;
   align-items: start;
   width: 100%;
+  --kanban-column-height: 62dvh;
 }
 .kanban-column {
   background: var(--surface-2);
@@ -293,6 +294,10 @@ table tr:hover td {
   border-radius: var(--r-md);
   overflow: hidden;
   min-height: 120px;
+  height: var(--kanban-column-height);
+  max-height: var(--kanban-column-height);
+  display: flex;
+  flex-direction: column;
 }
 .kanban-column-drop-target {
   transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
@@ -325,6 +330,11 @@ table tr:hover td {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 .kanban-col-empty {
   text-align: center;

@@ -135,6 +135,41 @@ export const TareaList = ({ tareas, onDelete, onStatusChange, onOpenDetails }: T
   const [draggedTaskId, setDraggedTaskId] = React.useState<string | null>(null);
   const [dropEstadoId, setDropEstadoId] = React.useState<number | null>(null);
   const [suppressClickTaskId, setSuppressClickTaskId] = React.useState<string | null>(null);
+  const [columnHeight, setColumnHeight] = React.useState(560);
+  const boardRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    const updateColumnHeight = () => {
+      const boardTop = boardRef.current?.getBoundingClientRect().top;
+
+      if (boardTop === undefined) {
+        return;
+      }
+
+      const viewportHeight = window.innerHeight;
+      const appContainer = boardRef.current?.closest(".App") as HTMLElement | null;
+      const appPaddingBottom = appContainer
+        ? Number.parseFloat(window.getComputedStyle(appContainer).paddingBottom || "0")
+        : 0;
+      const nextHeight = Math.max(
+        260,
+        Math.floor(viewportHeight - boardTop - appPaddingBottom - 8)
+      );
+
+      setColumnHeight((current) => (current === nextHeight ? current : nextHeight));
+    };
+
+    updateColumnHeight();
+    window.addEventListener("resize", updateColumnHeight);
+
+    return () => {
+      window.removeEventListener("resize", updateColumnHeight);
+    };
+  }, [tareas.length]);
+
+  const boardStyle = {
+    ["--kanban-column-height" as string]: `${columnHeight}px`,
+  } as React.CSSProperties;
 
   if (!tareas || tareas.length === 0)
     return <p className="kanban-empty">No hay tareas registradas</p>;
@@ -197,7 +232,7 @@ export const TareaList = ({ tareas, onDelete, onStatusChange, onOpenDetails }: T
   };
 
   return (
-    <div className="kanban-board">
+    <div className="kanban-board" ref={boardRef} style={boardStyle}>
       {COLUMNS.map(({ estadoId, label, accent, headerBg, headerBorder, countBg, countColor }) => {
         const cards = sortTareas(tareas.filter((t) => t.estadoId === estadoId));
         return (

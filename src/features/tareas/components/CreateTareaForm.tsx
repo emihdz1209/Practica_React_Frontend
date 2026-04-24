@@ -41,6 +41,14 @@ const getDefaultFechaLimite = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T17:00`;
 };
 
+const getTodayDateValue = () => {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+const getMinFechaLimite = () => `${getTodayDateValue()}T00:00`;
+
 const EMPTY = {
   projectId: "",
   titulo: "",
@@ -53,6 +61,7 @@ const EMPTY = {
 const MAX_ESTIMATED_HOURS = 48;
 const ESTIMATED_HOURS_ERROR_MESSAGE =
   `El tiempo estimado debe estar entre 0 y ${MAX_ESTIMATED_HOURS} horas.`;
+const DEADLINE_ERROR_MESSAGE = "La fecha límite no puede ser anterior al día de hoy.";
 
 export const CreateTareaForm = ({
   onSubmit,
@@ -62,6 +71,7 @@ export const CreateTareaForm = ({
   submitError,
   onClearSubmitError,
 }: Props) => {
+  const minFechaLimite = getMinFechaLimite();
   const [form, setForm] = useState(() => ({
     ...EMPTY,
     // Pre-select the project when only one is available
@@ -70,10 +80,15 @@ export const CreateTareaForm = ({
     fechaLimite: getDefaultFechaLimite(),
   }));
   const [estimatedHoursError, setEstimatedHoursError] = useState<string | null>(null);
+  const [deadlineError, setDeadlineError] = useState<string | null>(null);
 
   const clearFeedback = () => {
     if (estimatedHoursError) {
       setEstimatedHoursError(null);
+    }
+
+    if (deadlineError) {
+      setDeadlineError(null);
     }
 
     onClearSubmitError?.();
@@ -94,6 +109,12 @@ export const CreateTareaForm = ({
     )
       return;
 
+    const selectedDateValue = form.fechaLimite.slice(0, 10);
+    if (selectedDateValue < getTodayDateValue()) {
+      setDeadlineError(DEADLINE_ERROR_MESSAGE);
+      return;
+    }
+
     const parsedTiempoEstimado =
       form.tiempoEstimado.trim() === "" ? null : Number(form.tiempoEstimado);
 
@@ -108,6 +129,7 @@ export const CreateTareaForm = ({
     }
 
     setEstimatedHoursError(null);
+  setDeadlineError(null);
     onClearSubmitError?.();
 
     onSubmit({
@@ -180,9 +202,14 @@ export const CreateTareaForm = ({
         required
         size="small"
         fullWidth
+        error={Boolean(deadlineError)}
+        helperText={deadlineError || " "}
         slotProps={{
           inputLabel: {
             shrink: true,
+          },
+          htmlInput: {
+            min: minFechaLimite,
           },
         }}
       />

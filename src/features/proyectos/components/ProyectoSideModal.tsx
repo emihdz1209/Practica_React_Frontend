@@ -27,20 +27,6 @@ const toDatetimeLocal = (value: string | null): string => {
   return value.slice(0, 16);
 };
 
-const progressToneClass = (percentage: number) =>
-  percentage >= 75
-    ? styles.progressHigh
-    : percentage >= 40
-      ? styles.progressMedium
-      : styles.progressLow;
-
-const progressTextToneClass = (percentage: number) =>
-  percentage >= 75
-    ? styles.progressTextHigh
-    : percentage >= 40
-      ? styles.progressTextMedium
-      : "";
-
 interface SideModalProps {
   project: Proyecto | null;
   onClose: () => void;
@@ -77,26 +63,8 @@ const ProyectoViewContent = ({
   onCancelDelete,
   onDelete,
 }: ProyectoViewContentProps) => {
-  const progress = project.progreso ?? 0;
-
   return (
     <div className="task-detail-content">
-      <div className="task-detail-section">
-        <span className="task-detail-label">Progreso</span>
-        <div className={styles.progressRow}>
-          <progress
-            className={`${styles.progressValue} ${progressToneClass(progress)}`}
-            value={progress}
-            max={100}
-          />
-          <span
-            className={`${styles.progressText} ${progressTextToneClass(progress)}`}
-          >
-            {progress}%
-          </span>
-        </div>
-      </div>
-
       <div className="task-detail-section">
         <span className="task-detail-label">Descripción</span>
         <p className={`task-detail-description ${styles.description}`}>
@@ -311,7 +279,7 @@ export const ProyectoSideModal = ({
     }
 
     deleteMutation.mutate(project.projectId, {
-      onSuccess: () => {
+      onSettled: () => {
         onProjectDeleted(project.projectId);
         onClose();
       },

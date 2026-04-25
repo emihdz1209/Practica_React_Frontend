@@ -9,8 +9,14 @@
   min-width: 0;
 }
 
+.topBackButton {
+  margin-bottom: 10px;
+  text-transform: none !important;
+}
+
 .inlineSectionLabel {
-  margin: 0 0 6px;
+  margin-bottom: 10px;
+  margin-top: 10px;
 }
 
 .teamText {
@@ -82,10 +88,33 @@
   --progress-color: #16a34a;
 }
 
-.backButton {
+.editButton {
   justify-self: end;
   text-transform: none !important;
   white-space: nowrap;
+}
+
+.buttonIcon {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
+.arrowBackIcon {
+  -webkit-mask-image: url("/arrow-back-up.svg");
+  mask-image: url("/arrow-back-up.svg");
+}
+
+.editProjectIcon {
+  -webkit-mask-image: url("/edit.svg");
+  mask-image: url("/edit.svg");
 }
 
 .loadingState {
@@ -127,7 +156,8 @@
     display: none;
   }
 
-  .backButton {
+  .topBackButton,
+  .editButton {
     justify-self: auto;
     width: 100%;
   }

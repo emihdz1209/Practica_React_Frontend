@@ -31,6 +31,11 @@ export const getProyecto = async (projectId: string): Promise<Proyecto> => {
   return response.data;
 };
 
+export interface ProjectMember {
+  projectId: string;
+  userId: string;
+}
+
 export const updateProyecto = async (
   projectId: string,
   proyecto: CreateProyectoRequest
@@ -39,8 +44,27 @@ export const updateProyecto = async (
   return response.data;
 };
 
-export const deleteProyecto = async (projectId: string): Promise<void> => {
-  await apiClient.delete(`/api/projects/${projectId}`);
+export const deleteProyecto = async (projectId: string, teamId?: string): Promise<void> => {
+  try {
+    await apiClient.delete(`/api/projects/${projectId}`);
+    return;
+  } catch (error: unknown) {
+    if (!teamId) {
+      throw error;
+    }
+  }
+
+  // Fallback for APIs that scope project deletion under team routes.
+  await apiClient.delete(`/api/teams/${teamId}/projects/${projectId}`);
+};
+
+export const getProjectMembers = async (projectId: string): Promise<ProjectMember[]> => {
+  const response = await apiClient.get<ProjectMember[]>(`/api/projects/${projectId}/members`);
+  return response.data;
+};
+
+export const deleteProjectMember = async (projectId: string, userId: string): Promise<void> => {
+  await apiClient.delete(`/api/projects/${projectId}/members/${userId}`);
 };
 
 export const getProjectSprints = async (projectId: string): Promise<Sprint[]> => {

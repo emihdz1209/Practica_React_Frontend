@@ -51,6 +51,14 @@ const EMPTY: ProyectoCreateFormState = {
   fechaFin: "",
 };
 
+const getCurrentDateTimeLocalValue = (): string => {
+  const now = new Date();
+  const offsetMinutes = now.getTimezoneOffset();
+  const localDate = new Date(now.getTime() - offsetMinutes * 60_000);
+
+  return localDate.toISOString().slice(0, 16);
+};
+
 // ── ProyectosPage ─────────────────────────────────────────────────────────────
 
 export const ProyectosPage = () => {
@@ -158,7 +166,21 @@ export const ProyectosPage = () => {
       return;
     }
 
+    if (!selectedTeamId && teamIds.length > 0) {
+      setSelectedTeamId(teamIds[0]);
+    }
+
+    setForm({
+      ...EMPTY,
+      fechaInicio: getCurrentDateTimeLocalValue(),
+    });
+
     createModal.openModal();
+  };
+
+  const handleCloseCreateModal = () => {
+    createModal.closeModal();
+    setForm(EMPTY);
   };
 
   const handleOpenProject = (projectId: string) => {
@@ -172,7 +194,7 @@ export const ProyectosPage = () => {
 
       <ProyectosPageHeader
         onCreateProject={handleOpenCreateModal}
-        isCreateDisabled={!selectedTeamId || !canManageProjects}
+        isCreateDisabled={!canManageProjects || loadingEquipos || teamIds.length === 0}
       />
 
       <ProyectosFilters
@@ -196,7 +218,7 @@ export const ProyectosPage = () => {
       {/* Create project modal */}
       <CreateProyectoModal
         open={canManageProjects && createModal.isOpen}
-        onClose={createModal.closeModal}
+        onClose={handleCloseCreateModal}
         form={form}
         onChange={handleChange}
         onSubmit={handleSubmit}

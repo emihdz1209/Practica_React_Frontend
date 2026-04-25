@@ -2,8 +2,10 @@
 
 import React from "react";
 import { CircularProgress } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import { useEquipos } from "@/features/equipos/hooks/useEquipos";
 import { useAllProyectos } from "@/features/proyectos/hooks/useProyectos";
+import { ROUTES } from "@/app/router/routes";
 import { NavBar } from "@/shared/pages/NavBar";
 import { ManagerPortfolioDashboard } from "@/features/dashboard/components/ManagerPortfolioDashboard";
 
@@ -39,6 +41,7 @@ function ProgressBadge({ value }: { value: number }) {
 }
 
 export const DashboardPage = () => {
+  const navigate = useNavigate();
   const { data: equipos, isLoading: le } = useEquipos();
   const teamIds = (equipos || []).map((e) => e.teamId);
   const { data: proyectos, isLoading: lp } = useAllProyectos(teamIds);
@@ -85,7 +88,19 @@ export const DashboardPage = () => {
                   </thead>
                   <tbody>
                     {proyectos.slice(0, 10).map((p) => (
-                      <tr key={p.projectId}>
+                      <tr
+                        key={p.projectId}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => navigate(`${ROUTES.proyectos}/${p.projectId}`)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            navigate(`${ROUTES.proyectos}/${p.projectId}`);
+                          }
+                        }}
+                        style={{ cursor: "pointer" }}
+                      >
                         <td className="cell-primary">{p.nombre}</td>
                         <td><ProgressBadge value={p.progreso || 0} /></td>
                         <td>{p.fechaInicio ? new Date(p.fechaInicio).toLocaleDateString("es-MX") : "—"}</td>

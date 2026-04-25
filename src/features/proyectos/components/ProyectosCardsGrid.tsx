@@ -1,4 +1,3 @@
-import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import { CircularProgress } from "@mui/material";
 import type { Proyecto } from "@/features/proyectos/types/proyecto";
 import styles from "@/features/proyectos/styles/ProyectosCardsGrid.module.css";
@@ -102,7 +101,10 @@ export const ProyectosCardsGrid = ({
                   <span className={`${styles.statusBadge} ${status.className}`}>
                     {status.label}
                   </span>
-                  <OpenInNewRoundedIcon fontSize="small" className={styles.openIcon} />
+                  <span
+                    aria-hidden="true"
+                    className={styles.headerIcon}
+                  />
                 </div>
 
                 <h3 className={styles.projectName}>{proyecto.nombre}</h3>
@@ -121,15 +123,34 @@ export const ProyectosCardsGrid = ({
 
                 <div className={styles.bottomMeta}>
                   <div className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Team</span>
+                    <span className={styles.metaLabelWithIcon}>
+                      <img src="/users.svg" alt="" aria-hidden="true" className={styles.metaIcon} />
+                      Team
+                    </span>
                     <span className={styles.metaValue}>{teamMembers}</span>
                   </div>
                   <div className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Tasks</span>
+                    <span className={styles.metaLabelWithIcon}>
+                      <img
+                        src="/circle-dashed-check.svg"
+                        alt=""
+                        aria-hidden="true"
+                        className={styles.metaIcon}
+                      />
+                      Tasks
+                    </span>
                     <span className={styles.metaValue}>{tasksLabel}</span>
                   </div>
                   <div className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Due</span>
+                    <span className={styles.metaLabelWithIcon}>
+                      <img
+                        src="/calendar-due.svg"
+                        alt=""
+                        aria-hidden="true"
+                        className={styles.metaIcon}
+                      />
+                      Due
+                    </span>
                     <span className={styles.metaValue}>{fmtDueDate(proyecto.fechaFin)}</span>
                   </div>
                 </div>

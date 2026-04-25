@@ -7,6 +7,8 @@ import {
   getProyecto,
   updateProyecto,
   deleteProyecto,
+  getProjectMembers,
+  deleteProjectMember,
   getProjectSprints,
   getSprintKpis,
   getProjectProgress,
@@ -76,7 +78,17 @@ export const useDeleteProyecto = (teamId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (projectId: string) => deleteProyecto(projectId),
+    mutationFn: async (projectId: string) => {
+      const members = await getProjectMembers(projectId);
+
+      if (members.length > 0) {
+        await Promise.all(
+          members.map((member) => deleteProjectMember(projectId, member.userId))
+        );
+      }
+
+      await deleteProyecto(projectId, teamId);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["proyectos", teamId] });
     },

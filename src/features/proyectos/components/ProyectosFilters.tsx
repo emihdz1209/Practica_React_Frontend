@@ -5,11 +5,12 @@ import styles from "@/features/proyectos/styles/ProyectosFilters.module.css";
 
 interface ProyectosFiltersProps {
   selectedTeamId: string;
-  selectedProjectId: string;
+  selectedProjectId?: string;
   equipos?: Equipo[];
   proyectos?: Proyecto[];
+  showProjectFilter?: boolean;
   onTeamChange: (teamId: string) => void;
-  onProjectChange: (projectId: string) => void;
+  onProjectChange?: (projectId: string) => void;
 }
 
 export const ProyectosFilters = ({
@@ -17,6 +18,7 @@ export const ProyectosFilters = ({
   selectedProjectId,
   equipos,
   proyectos,
+  showProjectFilter = true,
   onTeamChange,
   onProjectChange,
 }: ProyectosFiltersProps) => {
@@ -42,16 +44,16 @@ export const ProyectosFilters = ({
         </Select>
       </FormControl>
 
-      {selectedTeamId && (
+      {showProjectFilter && selectedTeamId && (
         <>
           <span className={`section-label ${styles.inlineLabel} ${styles.projectLabel}`}>
             Dashboard del proyecto
           </span>
           <FormControl size="small" className={styles.projectControl}>
             <Select
-              value={selectedProjectId}
+              value={selectedProjectId ?? ""}
               displayEmpty
-              onChange={(event) => onProjectChange(event.target.value as string)}
+              onChange={(event) => onProjectChange?.(event.target.value as string)}
             >
               <MenuItem value="">
                 <em className={styles.placeholder}>Seleccionar proyecto</em>

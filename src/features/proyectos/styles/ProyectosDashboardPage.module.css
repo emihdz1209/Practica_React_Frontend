@@ -1,0 +1,134 @@
+.header {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(280px, 420px) auto;
+  align-items: end;
+  gap: 248px;
+}
+
+.headerInfo {
+  min-width: 0;
+}
+
+.inlineSectionLabel {
+  margin: 0 0 6px;
+}
+
+.teamText {
+  margin: 6px 0 0;
+  color: var(--text-2);
+  font-size: 0.86rem;
+}
+
+.headerProgress {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.headerProgressPlaceholder {
+  width: 100%;
+}
+
+.progressMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-2);
+  font-size: 0.79rem;
+}
+
+.progressMeta strong {
+  color: var(--text-1);
+  font-size: 0.82rem;
+}
+
+.progressValue {
+  width: 100%;
+  height: 7px;
+  border: none;
+  border-radius: var(--r-pill);
+  overflow: hidden;
+  background: var(--surface-3);
+  appearance: none;
+}
+
+.progressValue::-webkit-progress-bar {
+  background: var(--surface-3);
+  border-radius: var(--r-pill);
+}
+
+.progressValue::-webkit-progress-value {
+  background: var(--progress-color, var(--warning));
+  border-radius: var(--r-pill);
+  transition: width 0.3s ease;
+}
+
+.progressValue::-moz-progress-bar {
+  background: var(--progress-color, var(--warning));
+  border-radius: var(--r-pill);
+}
+
+.progressLow {
+  --progress-color: #d97706;
+}
+
+.progressMedium {
+  --progress-color: #2563eb;
+}
+
+.progressHigh {
+  --progress-color: #16a34a;
+}
+
+.backButton {
+  justify-self: end;
+  text-transform: none !important;
+  white-space: nowrap;
+}
+
+.loadingState {
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emptyState {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-3);
+  font-size: 0.9rem;
+}
+
+.emptyState p {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .header {
+    display: flex;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .headerProgress {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .headerProgressPlaceholder {
+    display: none;
+  }
+
+  .backButton {
+    justify-self: auto;
+    width: 100%;
+  }
+}

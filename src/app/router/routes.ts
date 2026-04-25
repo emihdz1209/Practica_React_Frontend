@@ -7,6 +7,7 @@ export const ROUTES = {
   priorities: "/priorities",
   tareas:     "/tareas",
   proyectos:  "/proyectos",
+  proyectoDashboard: "/proyectos/:projectId",
   equipos:    "/equipos",
   managerDashboard: "/manager-dashboard",
 } as const;

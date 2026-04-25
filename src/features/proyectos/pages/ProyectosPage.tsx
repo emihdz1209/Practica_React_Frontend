@@ -1,29 +1,28 @@
 /// src/features/proyectos/pages/ProyectosPage.tsx
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useEquipos } from "@/features/equipos/hooks/useEquipos";
 import {
-  useProyectos,
+  useAllProyectos,
   useCreateProyecto,
 } from "@/features/proyectos/hooks/useProyectos";
+import { useMultiProjectTareas } from "@/features/tareas/hooks/useTareas";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import type { Proyecto } from "@/features/proyectos/types/proyecto";
 import {
   CreateProyectoModal,
   type ProyectoCreateFormState,
 } from "@/features/proyectos/components/CreateProyectoModal";
 import { ProyectosFilters } from "@/features/proyectos/components/ProyectosFilters";
-import { ProyectosTable } from "@/features/proyectos/components/ProyectosTable";
-import { ProyectoSideModal } from "@/features/proyectos/components/ProyectoSideModal";
+import { ProyectosCardsGrid } from "@/features/proyectos/components/ProyectosCardsGrid";
 import { ProyectosPageHeader } from "@/features/proyectos/components/ProyectosPageHeader";
-import { ProyectosDashboardSection } from "@/features/proyectos/components/ProyectosDashboardSection";
 import { NavBar } from "@/shared/pages/NavBar";
 import { useAppModal } from "@/shared/components/AppModal";
+import { ROUTES } from "@/app/router/routes";
 
 // ── Persistence helpers ──────────────────────────────────────────────────────
 
 const TEAM_STORAGE_KEY = "proyectos.selectedTeamId";
-const PROJECT_STORAGE_KEY = "proyectos.selectedProjectId";
 
 const readStoredValue = (key: string): string => {
   try {
@@ -55,6 +54,7 @@ const EMPTY: ProyectoCreateFormState = {
 // ── ProyectosPage ─────────────────────────────────────────────────────────────
 
 export const ProyectosPage = () => {
+  const navigate = useNavigate();
   const { auth } = useAuth();
   const { data: equipos, isLoading: loadingEquipos } = useEquipos();
   const canManageProjects = auth.user?.role === "MANAGER";
@@ -62,28 +62,60 @@ export const ProyectosPage = () => {
   const [selectedTeamId, setSelectedTeamId] = useState<string>(
     () => readStoredValue(TEAM_STORAGE_KEY)
   );
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(
-    () => readStoredValue(PROJECT_STORAGE_KEY)
-  );
-  const [detailProject, setDetailProject] = useState<Proyecto | null>(null);
   const [form, setForm] = useState(EMPTY);
   const createModal = useAppModal();
 
-  const { data: proyectos, isLoading: loadingProyectos } = useProyectos(
-    selectedTeamId || undefined
+  const teamIds = useMemo(
+    () => (equipos ?? []).map((equipo) => equipo.teamId),
+    [equipos]
   );
-  const createMutation = useCreateProyecto(selectedTeamId);
+  const teamNameById = useMemo<Record<string, string>>(
+    () => Object.fromEntries((equipos ?? []).map((equipo) => [equipo.teamId, equipo.nombre])),
+    [equipos]
+  );
+  const teamMembersById = useMemo<Record<string, number>>(
+    () => Object.fromEntries((equipos ?? []).map((equipo) => [equipo.teamId, equipo.totalMembers])),
+    [equipos]
+  );
 
-  const isSideModalOpen = Boolean(detailProject);
+  const { data: allProjects = [], isLoading: loadingProyectos } = useAllProyectos(teamIds);
+  const proyectos = useMemo(
+    () =>
+      selectedTeamId
+        ? allProjects.filter((project) => project.teamId === selectedTeamId)
+        : allProjects,
+    [allProjects, selectedTeamId]
+  );
+  const projectIds = useMemo(() => proyectos.map((project) => project.projectId), [proyectos]);
+  const { data: projectTasks = [], isLoading: loadingProjectTasks } = useMultiProjectTareas(projectIds);
+
+  const taskStatsByProjectId = useMemo<Record<string, { completed: number; total: number }>>(() => {
+    const stats: Record<string, { completed: number; total: number }> = {};
+
+    projectIds.forEach((projectId) => {
+      stats[projectId] = { completed: 0, total: 0 };
+    });
+
+    projectTasks.forEach((task) => {
+      if (!stats[task.projectId]) {
+        stats[task.projectId] = { completed: 0, total: 0 };
+      }
+
+      stats[task.projectId].total += 1;
+      if (task.fechaFinalizacion) {
+        stats[task.projectId].completed += 1;
+      }
+    });
+
+    return stats;
+  }, [projectIds, projectTasks]);
+
+  const createMutation = useCreateProyecto(selectedTeamId);
 
   // ── Persistence effects ────────────────────────────────────────
   useEffect(() => {
     persistStoredValue(TEAM_STORAGE_KEY, selectedTeamId);
   }, [selectedTeamId]);
-
-  useEffect(() => {
-    persistStoredValue(PROJECT_STORAGE_KEY, selectedProjectId);
-  }, [selectedProjectId]);
 
   // Validate stored team still exists
   useEffect(() => {
@@ -91,26 +123,12 @@ export const ProyectosPage = () => {
     const teamExists = equipos.some((eq) => eq.teamId === selectedTeamId);
     if (!teamExists) {
       setSelectedTeamId("");
-      setSelectedProjectId("");
     }
   }, [equipos, selectedTeamId]);
-
-  // Validate stored project still belongs to selected team
-  useEffect(() => {
-    if (!selectedProjectId) return;
-    if (!selectedTeamId) {
-      setSelectedProjectId("");
-      return;
-    }
-    if (!proyectos) return;
-    const projectExists = proyectos.some((p) => p.projectId === selectedProjectId);
-    if (!projectExists) setSelectedProjectId("");
-  }, [selectedProjectId, selectedTeamId, proyectos]);
 
   // ── Handlers ──────────────────────────────────────────────────────
   const handleTeamChange = (teamId: string) => {
     setSelectedTeamId(teamId);
-    setSelectedProjectId("");
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,7 +161,9 @@ export const ProyectosPage = () => {
     createModal.openModal();
   };
 
-  const selectedProject = proyectos?.find((p) => p.projectId === selectedProjectId);
+  const handleOpenProject = (projectId: string) => {
+    navigate(`${ROUTES.proyectos}/${projectId}`);
+  };
 
   // ── Render ────────────────────────────────────────────────────────
   return (
@@ -155,53 +175,23 @@ export const ProyectosPage = () => {
         isCreateDisabled={!selectedTeamId || !canManageProjects}
       />
 
-      {/* Main layout with side modal */}
-      <div className={`tareas-layout ${isSideModalOpen ? "tareas-layout--with-panel" : ""}`}>
-        <div className="tareas-main">
-          <ProyectosFilters
-            selectedTeamId={selectedTeamId}
-            selectedProjectId={selectedProjectId}
-            equipos={equipos}
-            proyectos={proyectos}
-            onTeamChange={handleTeamChange}
-            onProjectChange={setSelectedProjectId}
-          />
+      <ProyectosFilters
+        selectedTeamId={selectedTeamId}
+        equipos={equipos}
+        showProjectFilter={false}
+        onTeamChange={handleTeamChange}
+      />
 
-          <ProyectosTable
-            isLoading={loadingEquipos || loadingProyectos}
-            selectedTeamId={selectedTeamId}
-            selectedProjectId={selectedProjectId}
-            detailProjectId={detailProject?.projectId || null}
-            proyectos={proyectos}
-            onDetailProjectChange={setDetailProject}
-            onDashboardProjectChange={(projectId) => {
-              setSelectedProjectId(projectId === selectedProjectId ? "" : projectId);
-            }}
-          />
-
-          {/* Dashboard section */}
-          {selectedProjectId && selectedProject && (
-            <ProyectosDashboardSection
-              projectId={selectedProjectId}
-              projectName={selectedProject.nombre}
-            />
-          )}
-        </div>
-
-        {/* Side modal */}
-        <ProyectoSideModal
-          project={detailProject}
-          teamId={selectedTeamId}
-          canManageProjects={canManageProjects}
-          onClose={() => setDetailProject(null)}
-          onProjectDeleted={(deletedId) => {
-            if (deletedId === selectedProjectId) {
-              setSelectedProjectId("");
-            }
-            setDetailProject(null);
-          }}
-        />
-      </div>
+      <ProyectosCardsGrid
+        isLoading={loadingEquipos || loadingProyectos}
+        isTaskStatsLoading={loadingProjectTasks}
+        selectedTeamId={selectedTeamId}
+        proyectos={proyectos}
+        teamNameById={teamNameById}
+        teamMembersById={teamMembersById}
+        taskStatsByProjectId={taskStatsByProjectId}
+        onOpenProject={handleOpenProject}
+      />
 
       {/* Create project modal */}
       <CreateProyectoModal

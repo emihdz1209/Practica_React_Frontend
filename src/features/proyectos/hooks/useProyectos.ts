@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient, useQueries } from "@tanstack/rea
 import {
   getProyectosByTeam,
   createProyecto,
+  getProyecto,
   updateProyecto,
   deleteProyecto,
   getProjectSprints,
@@ -22,6 +23,14 @@ export const useProyectos = (teamId?: string) => {
     queryKey: ["proyectos", teamId],
     queryFn: () => getProyectosByTeam(teamId!),
     enabled: !!teamId,
+  });
+};
+
+export const useProyecto = (projectId?: string) => {
+  return useQuery({
+    queryKey: ["proyecto", projectId],
+    queryFn: () => getProyecto(projectId!),
+    enabled: !!projectId,
   });
 };
 

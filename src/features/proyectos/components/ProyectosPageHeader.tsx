@@ -14,7 +14,7 @@ export const ProyectosPageHeader = ({
     <div className="page-header">
       <div>
         <h2>Proyectos</h2>
-        <p className="page-subtitle">Gestión de proyectos y dashboard de KPIs</p>
+        <p className="page-subtitle">Explora todos los proyectos y abre su dashboard de KPIs</p>
       </div>
       <Button
         className="AddButton"

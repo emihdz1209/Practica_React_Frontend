@@ -26,6 +26,16 @@ export const NavBar = () => {
   const navigate = useNavigate();
   const { auth, logout } = useAuth();
 
+  const isNavItemActive = (path: string) => {
+    if (path === ROUTES.dashboard) {
+      return location.pathname === path;
+    }
+
+    return (
+      location.pathname === path || location.pathname.startsWith(`${path}/`)
+    );
+  };
+
   const handleLogout = () => {
     setOpen(false);
     logout();
@@ -72,7 +82,7 @@ export const NavBar = () => {
             <Link
               key={path}
               to={path}
-              className={`nav-link${location.pathname === path ? " active" : ""}`}
+              className={`nav-link${isNavItemActive(path) ? " active" : ""}`}
               onClick={() => setOpen(false)}
             >
               {icon}

@@ -1,3 +1,362 @@
+.page {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-top: 10px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.headerInfo {
+  min-width: 0;
+}
+
+.topBackButton {
+  margin-bottom: 10px;
+  text-transform: none !important;
+}
+
+.buttonIcon {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
+.arrowBackIcon {
+  -webkit-mask-image: url("/arrow-back-up.svg");
+  mask-image: url("/arrow-back-up.svg");
+}
+
+.heroTitle {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  color: var(--text-1);
+}
+
+.ownerMeta {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.ownerLabel {
+  color: var(--text-3);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ownerName {
+  color: var(--text-1);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.headerActions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  min-height: 100%;
+}
+
+.dangerButton {
+  white-space: nowrap !important;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 1.1fr);
+  gap: 18px;
+}
+
+.bottomGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.cardHeaderTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardHeaderTitle h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.cardHeaderTitle p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.84rem;
+}
+
+.cardBody {
+  padding: 18px 22px 22px;
+}
+
+.descriptionField {
+  width: 100%;
+  min-height: 206px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  resize: vertical;
+  font: inherit;
+  color: var(--text-1);
+  background: #ffffff;
+  outline: none;
+  line-height: 1.6;
+}
+
+.descriptionField:focus {
+  border-color: #9bbcf8;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.descriptionFooter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.descriptionHint {
+  margin: 10px 0 0;
+  color: var(--text-3);
+  font-size: 0.8rem;
+}
+
+.membersList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.memberRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #ffffff;
+}
+
+.memberIdentity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.memberAvatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #1c2b4d;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.memberMeta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.memberName {
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.memberEmail {
+  color: var(--text-2);
+  font-size: 0.84rem;
+}
+
+.memberBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--r-pill);
+  padding: 7px 11px;
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.memberActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.memberRemove {
+  color: var(--danger) !important;
+}
+
+.projectList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.projectRowButton {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.projectRowButton:hover {
+  border-color: #a7bddf;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.projectRowButton:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.projectTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.projectName {
+  margin: 0;
+  font-weight: 800;
+  color: var(--text-1);
+}
+
+.projectDates {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.82rem;
+}
+
+.projectProgress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-2);
+  font-size: 0.8rem;
+}
+
+.projectProgressBar {
+  flex: 1;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.projectProgressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.projectEmpty {
+  padding: 28px 0 4px;
+  text-align: center;
+  color: var(--text-2);
+}
+
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@media (max-width: 1100px) {
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .headerRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .memberRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .memberActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
 .container {
   padding: 24px 32px;
   width: 100%;
@@ -9,7 +368,6 @@
 }
 
 .card {
-  margin-bottom: 20px;
 }
 
 .cardContent {

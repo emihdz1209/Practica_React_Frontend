@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import ReactDOM from "react-dom";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/app/router/routes";
 import { useAuth } from "@/features/auth/hooks/useAuth";
@@ -46,15 +45,33 @@ export const NavBar = () => {
 
   return (
     <>
-      {/* Floating toggle button */}
-      <button
-        className="nav-toggle-btn"
-        onClick={() => setOpen(true)}
-        aria-label="Abrir menú"
-        style={{ display: open ? "none" : "flex" }}
-      >
-        <MenuIcon />
-      </button>
+      {/* Collapsed quick-access rail */}
+      <div className="nav-quick-rail">
+        <button
+          className="nav-toggle-btn"
+          onClick={() => setOpen((prev) => !prev)}
+          aria-label={open ? "Cerrar menú" : "Abrir menú"}
+          title={open ? "Cerrar menú" : "Abrir menú"}
+          type="button"
+        >
+          {open ? <CloseIcon /> : <MenuIcon />}
+        </button>
+
+        <div className="nav-quick-links" aria-label="Accesos rápidos">
+          {NAV_ITEMS.map(({ path, label, icon }) => (
+            <Link
+              key={path}
+              to={path}
+              className={`nav-quick-link${isNavItemActive(path) ? " active" : ""}`}
+              onClick={() => setOpen(false)}
+              aria-label={label}
+              title={label}
+            >
+              {icon}
+            </Link>
+          ))}
+        </div>
+      </div>
 
       {/* Dim backdrop */}
       {open && <div className="nav-backdrop" onClick={() => setOpen(false)} />}
@@ -68,7 +85,7 @@ export const NavBar = () => {
         <div className="nav-header">
           <div className="nav-logo">
             <span className="nav-logo-icon">✓</span>
-            <span>Task Manager</span>
+            <span>Workspace</span>
           </div>
           <button
             className="nav-close-btn"

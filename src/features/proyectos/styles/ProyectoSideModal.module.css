@@ -26,6 +26,109 @@
 
 .editActions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: auto;
+}
+
+.deleteActionRow {
+  display: flex;
+  width: 100%;
+}
+
+.deleteButton {
+  width: 100%;
+}
+
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.modalDescription {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+.twoColumnsRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.attachmentsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.attachmentsTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.uploadBox {
+  border: 1px dashed #cfd8e3;
+  border-radius: 10px;
+  background: #fafcff;
+  min-height: 142px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 18px;
+  color: #5f7393;
+  cursor: pointer;
+}
+
+.uploadBox:hover {
+  border-color: #9bb4da;
+  background: #f6f9ff;
+}
+
+.uploadIconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.uploadIcon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.uploadPrimaryText {
+  margin: 0;
+  font-size: 1.02rem;
+  color: #213246;
+}
+
+.uploadSecondaryText {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #6e809a;
+}
+
+.cancelButton {
+  min-width: 122px;
+}
+
+.deleteIcon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  filter: invert(24%) sepia(92%) saturate(2392%) hue-rotate(345deg) brightness(95%) contrast(95%);
+}
+
+.saveButton {
+  min-width: 160px;
 }

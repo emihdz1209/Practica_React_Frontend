@@ -3,29 +3,11 @@ import {
   TextField,
   Button,
   CircularProgress,
-  IconButton,
-  Tooltip,
 } from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
-import {
-  useUpdateProyecto,
-  useDeleteProyecto,
-} from "@/features/proyectos/hooks/useProyectos";
+import { useUpdateProyecto, useDeleteProyecto } from "@/features/proyectos/hooks/useProyectos";
 import type { Proyecto } from "@/features/proyectos/types/proyecto";
 import styles from "@/features/proyectos/styles/ProyectoSideModal.module.css";
-
-const fmtDate = (value: string | null) =>
-  value ? new Date(value).toLocaleDateString("es-MX") : "—";
-
-const toDatetimeLocal = (value: string | null): string => {
-  if (!value) {
-    return "";
-  }
-
-  return value.slice(0, 16);
-};
 
 interface SideModalProps {
   project: Proyecto | null;
@@ -38,171 +20,114 @@ interface SideModalProps {
 interface ProyectoFormState {
   nombre: string;
   descripcion: string;
-  fechaInicio: string;
-  fechaFin: string;
+  dueDate: string;
+  fechaInicioOriginal: string | null;
 }
-
-interface ProyectoViewContentProps {
-  project: Proyecto;
-  canManageProjects: boolean;
-  confirmDelete: boolean;
-  isDeleting: boolean;
-  onStartEdit: () => void;
-  onStartDelete: () => void;
-  onCancelDelete: () => void;
-  onDelete: () => void;
-}
-
-const ProyectoViewContent = ({
-  project,
-  canManageProjects,
-  confirmDelete,
-  isDeleting,
-  onStartEdit,
-  onStartDelete,
-  onCancelDelete,
-  onDelete,
-}: ProyectoViewContentProps) => {
-  return (
-    <div className="task-detail-content">
-      <div className="task-detail-section">
-        <span className="task-detail-label">Descripción</span>
-        <p className={`task-detail-description ${styles.description}`}>
-          {project.descripcion || "Sin descripción"}
-        </p>
-      </div>
-
-      <div className="task-detail-section">
-        <span className="task-detail-label">Fechas</span>
-        <div className={`task-system-meta ${styles.systemMeta}`}>
-          <p className="task-detail-description">
-            Inicio: {fmtDate(project.fechaInicio)}
-          </p>
-          <p className="task-detail-description">
-            Fin: {fmtDate(project.fechaFin)}
-          </p>
-        </div>
-      </div>
-
-      <div className={styles.actionsRow}>
-        {canManageProjects ? (
-          <>
-            <Button
-              variant="outlined"
-              startIcon={<EditIcon />}
-              onClick={onStartEdit}
-              size="small"
-            >
-              Editar
-            </Button>
-
-            {!confirmDelete ? (
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={<DeleteIcon />}
-                onClick={onStartDelete}
-                size="small"
-              >
-                Eliminar
-              </Button>
-            ) : (
-              <div className={styles.deleteConfirmRow}>
-                <span className={styles.deleteConfirmText}>¿Confirmar eliminación?</span>
-                <Button
-                  variant="contained"
-                  color="error"
-                  size="small"
-                  onClick={onDelete}
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? <CircularProgress size={14} /> : "Sí, eliminar"}
-                </Button>
-                <Button variant="text" size="small" onClick={onCancelDelete}>
-                  Cancelar
-                </Button>
-              </div>
-            )}
-          </>
-        ) : (
-          <p className="task-detail-feedback">
-            Solo MANAGERS pueden editar o eliminar proyectos.
-          </p>
-        )}
-      </div>
-    </div>
-  );
-};
 
 interface ProyectoEditFormProps {
   form: ProyectoFormState;
   isSaving: boolean;
+  isDeleting: boolean;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (event: React.FormEvent) => void;
+  onDelete: () => void;
   onCancel: () => void;
 }
 
 const ProyectoEditForm = ({
   form,
   isSaving,
+  isDeleting,
   onChange,
   onSubmit,
+  onDelete,
   onCancel,
 }: ProyectoEditFormProps) => {
   return (
-    <form onSubmit={onSubmit} className="task-edit-form">
+    <form onSubmit={onSubmit} className={styles.editForm}>
+      <p className={styles.modalDescription}>
+        Update project details and manage attached files.
+      </p>
+
       <TextField
         name="nombre"
-        label="Nombre del proyecto"
+        label="Project name"
         value={form.nombre}
         onChange={onChange}
         required
         size="small"
         fullWidth
       />
+
       <TextField
         name="descripcion"
-        label="Descripción"
+        label="Description"
         value={form.descripcion}
         onChange={onChange}
         multiline
-        rows={3}
+        minRows={3}
+        maxRows={10}
         size="small"
         fullWidth
       />
+
       <TextField
-        name="fechaInicio"
-        label="Fecha inicio"
-        type="datetime-local"
-        value={form.fechaInicio}
-        onChange={onChange}
-        size="small"
-        fullWidth
-        slotProps={{ inputLabel: { shrink: true } }}
-      />
-      <TextField
-        name="fechaFin"
-        label="Fecha fin"
-        type="datetime-local"
-        value={form.fechaFin}
+        name="dueDate"
+        label="Due date"
+        type="date"
+        value={form.dueDate}
         onChange={onChange}
         size="small"
         fullWidth
         slotProps={{ inputLabel: { shrink: true } }}
       />
 
+      <div className={styles.attachmentsSection}>
+        <span className={styles.attachmentsTitle}>Attachments</span>
+
+        <button type="button" className={styles.uploadBox}>
+          <span className={styles.uploadIconWrap}>
+            <img src="/upload.svg" alt="" aria-hidden="true" className={styles.uploadIcon} />
+          </span>
+          <p className={styles.uploadPrimaryText}>
+            <strong>Click to upload</strong> or drag files here
+          </p>
+          <p className={styles.uploadSecondaryText}>PDF, images, or docs up to 20MB</p>
+        </button>
+      </div>
+
+      <div className={styles.deleteActionRow}>
+        <Button
+          type="button"
+          variant="outlined"
+          color="error"
+          fullWidth
+          className={styles.deleteButton}
+          onClick={onDelete}
+          disabled={isDeleting}
+          startIcon={<img src="/trash.svg" alt="" aria-hidden="true" className={styles.deleteIcon} />}
+        >
+          {isDeleting ? <CircularProgress size={16} /> : "Delete project"}
+        </Button>
+      </div>
+
       <div className={styles.editActions}>
-        <Tooltip title="Cancelar edición">
-          <IconButton onClick={onCancel} size="small">
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        <Button
+          type="button"
+          variant="outlined"
+          className={styles.cancelButton}
+          onClick={onCancel}
+          startIcon={<CloseIcon fontSize="small" />}
+        >
+          Cancel
+        </Button>
         <Button
           type="submit"
-          className="AddButton"
+          variant="contained"
+          className={styles.saveButton}
           disabled={isSaving}
         >
-          {isSaving ? <CircularProgress size={18} /> : "Guardar cambios"}
+          {isSaving ? <CircularProgress size={18} /> : "Save changes"}
         </Button>
       </div>
     </form>
@@ -218,13 +143,11 @@ export const ProyectoSideModal = ({
 }: SideModalProps) => {
   const isOpen = Boolean(project);
 
-  const [editing, setEditing] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [form, setForm] = useState<ProyectoFormState>({
     nombre: "",
     descripcion: "",
-    fechaInicio: "",
-    fechaFin: "",
+    dueDate: "",
+    fechaInicioOriginal: null,
   });
 
   const updateMutation = useUpdateProyecto(teamId);
@@ -232,45 +155,19 @@ export const ProyectoSideModal = ({
 
   useEffect(() => {
     if (!project) {
-      setEditing(false);
-      setConfirmDelete(false);
       return;
     }
 
     setForm({
       nombre: project.nombre,
       descripcion: project.descripcion ?? "",
-      fechaInicio: toDatetimeLocal(project.fechaInicio),
-      fechaFin: toDatetimeLocal(project.fechaFin),
+      dueDate: project.fechaFin ? project.fechaFin.slice(0, 10) : "",
+      fechaInicioOriginal: project.fechaInicio,
     });
-    setEditing(false);
-    setConfirmDelete(false);
   }, [project]);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
-  };
-
-  const handleSave = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!canManageProjects || !project || !form.nombre.trim()) {
-      return;
-    }
-
-    updateMutation.mutate(
-      {
-        projectId: project.projectId,
-        data: {
-          nombre: form.nombre,
-          descripcion: form.descripcion,
-          fechaInicio: form.fechaInicio || null,
-          fechaFin: form.fechaFin || null,
-        },
-      },
-      {
-        onSuccess: () => setEditing(false),
-      }
-    );
   };
 
   const handleDelete = () => {
@@ -286,6 +183,28 @@ export const ProyectoSideModal = ({
     });
   };
 
+  const handleSave = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!canManageProjects || !project || !form.nombre.trim()) {
+      return;
+    }
+
+    updateMutation.mutate(
+      {
+        projectId: project.projectId,
+        data: {
+          nombre: form.nombre,
+          descripcion: form.descripcion,
+          fechaInicio: form.fechaInicioOriginal,
+          fechaFin: form.dueDate ? `${form.dueDate}T00:00` : null,
+        },
+      },
+      {
+        onSuccess: () => onClose(),
+      }
+    );
+  };
+
   return (
     <aside
       className={`tareas-side-modal ${isOpen ? "tareas-side-modal--open" : ""}`}
@@ -297,7 +216,7 @@ export const ProyectoSideModal = ({
           <div>
             <span className="task-detail-label">Detalle de proyecto</span>
             <h3 className="tareas-side-modal-title">
-              {project ? project.nombre : "Selecciona un proyecto"}
+              {project ? "Edit project" : "Select a project"}
             </h3>
           </div>
           <button
@@ -312,26 +231,19 @@ export const ProyectoSideModal = ({
 
         <div className="tareas-side-modal-body">
           {!project ? (
-            <p className="task-detail-empty">Selecciona un proyecto para ver su detalle.</p>
-          ) : editing && canManageProjects ? (
+            <p className="task-detail-empty">Select a project to view its details.</p>
+          ) : canManageProjects ? (
             <ProyectoEditForm
               form={form}
               isSaving={updateMutation.isPending}
+              isDeleting={deleteMutation.isPending}
               onChange={handleChange}
               onSubmit={handleSave}
-              onCancel={() => setEditing(false)}
+              onDelete={handleDelete}
+              onCancel={onClose}
             />
           ) : (
-            <ProyectoViewContent
-              project={project}
-              canManageProjects={canManageProjects}
-              confirmDelete={confirmDelete}
-              isDeleting={deleteMutation.isPending}
-              onStartEdit={() => setEditing(true)}
-              onStartDelete={() => setConfirmDelete(true)}
-              onCancelDelete={() => setConfirmDelete(false)}
-              onDelete={handleDelete}
-            />
+            <p className="task-detail-feedback">Only MANAGERS can edit projects.</p>
           )}
         </div>
       </div>

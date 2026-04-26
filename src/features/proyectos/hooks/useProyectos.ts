@@ -68,8 +68,10 @@ export const useUpdateProyecto = (teamId: string) => {
   return useMutation({
     mutationFn: ({ projectId, data }: { projectId: string; data: CreateProyectoRequest }) =>
       updateProyecto(projectId, data),
-    onSuccess: () => {
+    onSuccess: (updatedProject, variables) => {
+      queryClient.setQueryData(["proyecto", variables.projectId], updatedProject);
       queryClient.invalidateQueries({ queryKey: ["proyectos", teamId] });
+      queryClient.invalidateQueries({ queryKey: ["proyecto", variables.projectId] });
     },
   });
 };

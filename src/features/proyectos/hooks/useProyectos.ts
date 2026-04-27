@@ -15,6 +15,7 @@ import {
   getDeveloperPerformance,
   getProjectDocuments,
   uploadProjectDocument,
+  deleteProjectDocument,
 } from "@/features/proyectos/services/proyectoService";
 import type {
   CreateProyectoRequest,
@@ -146,6 +147,17 @@ export const useUploadProjectDocument = (projectId?: string) => {
   return useMutation({
     mutationFn: ({ file, documentType }: { file: File; documentType: string }) =>
       uploadProjectDocument(projectId!, file, documentType),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projectDocuments", projectId] });
+    },
+  });
+};
+
+export const useDeleteProjectDocument = (projectId?: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (documentId: string) => deleteProjectDocument(documentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projectDocuments", projectId] });
     },

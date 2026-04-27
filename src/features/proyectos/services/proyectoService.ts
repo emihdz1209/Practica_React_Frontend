@@ -147,3 +147,7 @@ export const uploadProjectDocument = async (
 
   return response.data;
 };
+
+export const deleteProjectDocument = async (documentId: string): Promise<void> => {
+  await apiClient.delete(`/api/projects/documents/${documentId}`);
+};

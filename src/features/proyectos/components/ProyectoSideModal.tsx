@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { TextField, Button, CircularProgress, IconButton } from "@mui/material";
+import { TextField, Button, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
 import {
@@ -7,6 +7,7 @@ import {
   useDeleteProyecto,
   useProjectDocuments,
   useUploadProjectDocument,
+  useDeleteProjectDocument,
 } from "@/features/proyectos/hooks/useProyectos";
 import type { Proyecto, ProjectDocument } from "@/features/proyectos/types/proyecto";
 import styles from "@/features/proyectos/styles/ProyectoSideModal.module.css";
@@ -49,6 +50,8 @@ interface ProyectoEditFormProps {
   documents?: ProjectDocument[];
   isDocsLoading?: boolean;
   onFileChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onDeleteDocument?: (documentId: string) => void;
+  isDeletingDocument?: boolean;
 }
 
 const ProyectoEditForm = ({
@@ -63,6 +66,8 @@ const ProyectoEditForm = ({
   documents = [],
   isDocsLoading = false,
   onFileChange,
+  onDeleteDocument,
+  isDeletingDocument = false,
 }: ProyectoEditFormProps) => {
   return (
     <form onSubmit={onSubmit} className={styles.editForm}>
@@ -145,7 +150,13 @@ const ProyectoEditForm = ({
                     {typeof doc.fileSizeBytes === "number" ? formatFileSize(doc.fileSizeBytes) : ""}
                   </div>
                 </div>
-                <IconButton size="small" aria-label="delete-attachment" title="Delete attachment">
+                <IconButton
+                  size="small"
+                  aria-label="delete-attachment"
+                  title="Delete attachment"
+                  onClick={() => onDeleteDocument?.(doc.documentId)}
+                  disabled={isDeletingDocument}
+                >
                   <DeleteIcon fontSize="small" sx={{ color: "#ef4444" }} />
                 </IconButton>
               </div>
@@ -219,9 +230,11 @@ export const ProyectoSideModal = ({
 
   // Documents upload/list state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [confirmDeleteDocumentId, setConfirmDeleteDocumentId] = useState<string | null>(null);
 
   const documentsQuery = useProjectDocuments(project?.projectId);
   const uploadMutation = useUploadProjectDocument(project?.projectId);
+  const deleteDocumentMutation = useDeleteProjectDocument(project?.projectId);
 
   useEffect(() => {
     if (project?.projectId) {
@@ -269,6 +282,19 @@ export const ProyectoSideModal = ({
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+  };
+
+  const handleDeleteDocument = (documentId: string) => {
+    setConfirmDeleteDocumentId(documentId);
+  };
+
+  const handleConfirmDeleteDocument = () => {
+    if (!confirmDeleteDocumentId) return;
+    deleteDocumentMutation.mutate(confirmDeleteDocumentId, {
+      onSuccess: () => {
+        setConfirmDeleteDocumentId(null);
+      },
+    });
   };
 
   const handleDelete = () => {
@@ -345,12 +371,36 @@ export const ProyectoSideModal = ({
               documents={documentsQuery.data}
               isDocsLoading={documentsQuery.isLoading}
               onFileChange={handleFileChange}
+              onDeleteDocument={handleDeleteDocument}
+              isDeletingDocument={deleteDocumentMutation.isPending}
             />
           ) : (
             <p className="task-detail-feedback">Only MANAGERS can edit projects.</p>
           )}
         </div>
       </div>
+
+      <Dialog
+        open={Boolean(confirmDeleteDocumentId)}
+        onClose={() => setConfirmDeleteDocumentId(null)}
+        aria-labelledby="delete-document-dialog-title"
+      >
+        <DialogTitle id="delete-document-dialog-title">Delete Document</DialogTitle>
+        <DialogContent>
+          <p>Are you sure you want to delete this document? This action cannot be undone.</p>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDeleteDocumentId(null)}>Cancel</Button>
+          <Button
+            onClick={handleConfirmDeleteDocument}
+            color="error"
+            variant="contained"
+            disabled={deleteDocumentMutation.isPending}
+          >
+            {deleteDocumentMutation.isPending ? <CircularProgress size={18} /> : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </aside>
   );
 };

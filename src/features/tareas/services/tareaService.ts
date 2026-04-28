@@ -8,6 +8,29 @@ import type {
 
 const toRawId = (value: string) => value.replace(/-/g, "").toUpperCase();
 
+const toHyphenatedId = (value: string) => {
+  if (!value) return value;
+  if (value.includes("-")) return value.toLowerCase();
+  const clean = value.replace(/[^0-9a-fA-F]/g, "");
+  if (clean.length !== 32) return value;
+  return (
+    clean.slice(0, 8) +
+    "-" +
+    clean.slice(8, 12) +
+    "-" +
+    clean.slice(12, 16) +
+    "-" +
+    clean.slice(16, 20) +
+    "-" +
+    clean.slice(20)
+  ).toLowerCase();
+};
+
+const getTaskIdVariants = (taskId: string) => {
+  const variants = new Set([taskId, toRawId(taskId), toHyphenatedId(taskId)]);
+  return Array.from(variants).filter(Boolean);
+};
+
 const normalizePathIds = (taskId: string, userId: string) => ({
   taskId: toRawId(taskId),
   userId: toRawId(userId),
@@ -85,5 +108,17 @@ export const updateTareaStatus = async (
 };
 
 export const deleteTarea = async (taskId: string): Promise<void> => {
-  await apiClient.delete(`/api/tasks/${taskId}`);
+  const variants = getTaskIdVariants(taskId);
+  let lastError: unknown;
+
+  for (const variant of variants) {
+    try {
+      await apiClient.delete(`/api/tasks/${variant}`);
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError;
 };

@@ -1,0 +1,187 @@
+.topRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.runSelector {
+  min-width: 260px;
+}
+
+.summaryGrid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.summaryCard {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.summaryLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+}
+
+.summaryValue {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.summaryMeta {
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--r-pill);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.statusPending {
+  background: var(--warning-subtle);
+  color: var(--warning);
+}
+
+.statusCompleted {
+  background: var(--success-subtle);
+  color: var(--success);
+}
+
+.statusFailed {
+  background: var(--danger-subtle);
+  color: var(--danger);
+}
+
+.resultsHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.resultsHint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+.loadingState {
+  width: 100%;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.loadingText {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+
+.emptyState {
+  margin: 8px 0 0;
+  color: var(--text-3);
+  font-size: 0.85rem;
+}
+
+.taskTitle {
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.reasonText {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+
+.similarityBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 46px;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+
+.similarityHigh {
+  background: var(--success-subtle);
+  color: var(--success);
+}
+
+.similarityMedium {
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+}
+
+.similarityLow {
+  background: var(--warning-subtle);
+  color: var(--warning);
+}
+
+.deleteGroup {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.deleteButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+
+.deleteButton img {
+  width: 14px;
+  height: 14px;
+  filter: invert(24%) sepia(92%) saturate(2392%) hue-rotate(345deg) brightness(95%) contrast(95%);
+}
+
+.deleteButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 860px) {
+  .topRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

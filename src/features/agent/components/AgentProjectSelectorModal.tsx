@@ -17,6 +17,7 @@ import { ROUTES } from "@/app/router/routes";
 import { useEquipos } from "@/features/equipos/hooks/useEquipos";
 import { useProyectos } from "@/features/proyectos/hooks/useProyectos";
 import { useGenerateAiBacklog } from "@/features/agent/hooks/useAiBacklog";
+import { useStartDuplicateDetection } from "@/features/agent/hooks/useAiDuplicateDetection";
 import type { AgentOption } from "@/features/agent/components/AgentOptionsGrid";
 import styles from "@/features/agent/styles/AgentProjectSelectorModal.module.css";
 
@@ -28,6 +29,9 @@ interface AgentProjectSelectorModalProps {
 
 const DEFAULT_HOURS = "8";
 const MAX_HOURS = 200;
+const DEFAULT_THRESHOLD = "0.8";
+const MIN_THRESHOLD = 0;
+const MAX_THRESHOLD = 1;
 
 export const AgentProjectSelectorModal = ({
   open,
@@ -37,10 +41,12 @@ export const AgentProjectSelectorModal = ({
   const navigate = useNavigate();
   const { data: equipos = [], isLoading: isEquiposLoading } = useEquipos();
   const generateBacklogMutation = useGenerateAiBacklog();
+  const duplicateDetectionMutation = useStartDuplicateDetection();
 
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [plannedHours, setPlannedHours] = useState(DEFAULT_HOURS);
+  const [similarityThreshold, setSimilarityThreshold] = useState(DEFAULT_THRESHOLD);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { data: proyectos = [], isLoading: isProyectosLoading } = useProyectos(
@@ -56,11 +62,13 @@ export const AgentProjectSelectorModal = ({
       setSelectedTeamId("");
       setSelectedProjectId("");
       setPlannedHours(DEFAULT_HOURS);
+      setSimilarityThreshold(DEFAULT_THRESHOLD);
       setSubmitError(null);
     }
   }, [open, selectedOption?.id]);
 
   const isGenerateTasksOption = selectedOption?.id === "generate-tasks";
+  const isDuplicateAnalysisOption = selectedOption?.id === "duplicate-task-analysis";
 
   const selectedTeamName = useMemo(
     () => equipos.find((equipo) => equipo.teamId === selectedTeamId)?.nombre ?? "",
@@ -75,17 +83,32 @@ export const AgentProjectSelectorModal = ({
   );
 
   const parsedHours = Number(plannedHours);
+  const trimmedThreshold = similarityThreshold.trim();
+  const parsedThreshold = Number(trimmedThreshold);
   const isHoursValid =
     Number.isFinite(parsedHours) && parsedHours > 0 && parsedHours <= MAX_HOURS;
-  const isSubmitting = generateBacklogMutation.isPending;
+  const isThresholdValid =
+    trimmedThreshold.length > 0 &&
+    Number.isFinite(parsedThreshold) &&
+    parsedThreshold >= MIN_THRESHOLD &&
+    parsedThreshold <= MAX_THRESHOLD;
+  const isSubmitting = isGenerateTasksOption
+    ? generateBacklogMutation.isPending
+    : duplicateDetectionMutation.isPending;
   const actionLabel = isGenerateTasksOption
     ? isSubmitting
       ? "Generando..."
       : "Generar tareas"
-    : "Proximamente";
+    : isDuplicateAnalysisOption
+      ? isSubmitting
+        ? "Generando..."
+        : "Generar reporte"
+      : "Proximamente";
   const isActionDisabled = isGenerateTasksOption
     ? !selectedProjectId || !isHoursValid || isSubmitting
-    : true;
+    : isDuplicateAnalysisOption
+      ? !selectedProjectId || !isThresholdValid || isSubmitting
+      : true;
 
   const handleGenerateTasks = async () => {
     setSubmitError(null);
@@ -123,6 +146,55 @@ export const AgentProjectSelectorModal = ({
     }
   };
 
+  const handleGenerateDuplicateReport = async () => {
+    setSubmitError(null);
+
+    if (!selectedProjectId) {
+      setSubmitError("Selecciona un proyecto para continuar.");
+      return;
+    }
+
+    if (!isThresholdValid) {
+      setSubmitError(
+        `Ingresa un threshold valido entre ${MIN_THRESHOLD} y ${MAX_THRESHOLD}.`
+      );
+      return;
+    }
+
+    try {
+      const run = await duplicateDetectionMutation.mutateAsync({
+        projectId: selectedProjectId,
+        threshold: parsedThreshold,
+      });
+
+      onClose();
+      navigate(`${ROUTES.agentDuplicateAnalysis}/${selectedProjectId}?runId=${run.runId}`);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const apiMessage =
+          typeof error.response?.data?.error === "string"
+            ? error.response?.data?.error
+            : undefined;
+
+        setSubmitError(apiMessage ?? "No se pudo iniciar el analisis. Intenta nuevamente.");
+        return;
+      }
+
+      setSubmitError("No se pudo iniciar el analisis. Intenta nuevamente.");
+    }
+  };
+
+  const handlePrimaryAction = () => {
+    if (isGenerateTasksOption) {
+      handleGenerateTasks();
+      return;
+    }
+
+    if (isDuplicateAnalysisOption) {
+      handleGenerateDuplicateReport();
+    }
+  };
+
   return (
     <AppModal
       open={open}
@@ -133,7 +205,9 @@ export const AgentProjectSelectorModal = ({
         <p className={styles.helperText}>
           {isGenerateTasksOption
             ? "Selecciona un equipo, un proyecto y define las horas disponibles para iniciar la generacion."
-            : "Selecciona un equipo para cargar sus proyectos. La ejecucion inteligente aun esta en construccion."}
+            : isDuplicateAnalysisOption
+              ? "Selecciona un equipo, un proyecto y define el threshold de similitud para iniciar el analisis."
+              : "Selecciona un equipo para cargar sus proyectos."}
         </p>
 
         {isEquiposLoading ? (
@@ -207,6 +281,30 @@ export const AgentProjectSelectorModal = ({
           />
         )}
 
+        {isDuplicateAnalysisOption && (
+          <div>
+            <TextField
+              type="number"
+              size="small"
+              label="Threshold de similitud (0 - 1)"
+              value={similarityThreshold}
+              onChange={(event) => setSimilarityThreshold(event.target.value)}
+              disabled={!selectedProjectId}
+              fullWidth
+              slotProps={{
+                htmlInput: {
+                  min: MIN_THRESHOLD,
+                  max: MAX_THRESHOLD,
+                  step: 0.01,
+                },
+              }}
+            />
+            <p className={styles.thresholdHint}>
+              Sugerido 0.88 para reducir falsos positivos.
+            </p>
+          </div>
+        )}
+
         {submitError && (
           <Alert severity="error" className={styles.placeholderAlert}>
             {submitError}
@@ -216,6 +314,12 @@ export const AgentProjectSelectorModal = ({
         {isGenerateTasksOption ? (
           <Alert severity="info" className={styles.placeholderAlert}>
             La IA generara sugerencias basadas en los documentos del proyecto.
+            {selectedTeamName ? ` Equipo: ${selectedTeamName}.` : ""}
+            {selectedProjectName ? ` Proyecto: ${selectedProjectName}.` : ""}
+          </Alert>
+        ) : isDuplicateAnalysisOption ? (
+          <Alert severity="info" className={styles.placeholderAlert}>
+            La IA analizara las tareas del proyecto para detectar posibles duplicados.
             {selectedTeamName ? ` Equipo: ${selectedTeamName}.` : ""}
             {selectedProjectName ? ` Proyecto: ${selectedProjectName}.` : ""}
           </Alert>
@@ -232,7 +336,7 @@ export const AgentProjectSelectorModal = ({
           className="AddButton"
           disabled={isActionDisabled}
           fullWidth
-          onClick={handleGenerateTasks}
+          onClick={handlePrimaryAction}
         >
           {actionLabel}
         </Button>

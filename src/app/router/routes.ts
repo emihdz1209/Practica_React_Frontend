@@ -5,6 +5,7 @@ export const ROUTES = {
   dashboard:  "/",
   agent:      "/agent",
   agentBacklog: "/agent/backlog",
+  agentDuplicateAnalysis: "/agent/duplicate-analysis",
   priorities: "/priorities",
   tareas:     "/tareas",
   proyectos:  "/proyectos",

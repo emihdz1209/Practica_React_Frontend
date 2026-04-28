@@ -13,6 +13,7 @@ import { ProyectoDashboardPage } from "@/features/proyectos/pages/ProyectoDashbo
 import { TareasPage } from "@/features/tareas/pages/TareasPage";
 import { AgentPage } from "@/features/agent/pages/AgentPage";
 import { AgentBacklogPage } from "@/features/agent/pages/AgentBacklogPage";
+import { AgentDuplicateDetectionPage } from "@/features/agent/pages/AgentDuplicateDetectionPage";
 import { CreateTaskPriorityPage } from "@/features/taskPriorities/taskPriorities/pages/CreateTaskPriorityPage";
 
 import { ProtectedRoute } from "./ProtectedRoute";
@@ -47,6 +48,11 @@ export const AppRouter = () => {
         <Route
           path={`${ROUTES.agentBacklog}/:projectId`}
           element={<ProtectedRoute><AgentBacklogPage /></ProtectedRoute>}
+        />
+
+        <Route
+          path={`${ROUTES.agentDuplicateAnalysis}/:projectId`}
+          element={<ProtectedRoute><AgentDuplicateDetectionPage /></ProtectedRoute>}
         />
 
         {/* 🔐 Proyectos */}

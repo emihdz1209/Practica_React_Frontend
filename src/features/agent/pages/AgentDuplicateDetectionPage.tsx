@@ -16,6 +16,11 @@ import { ROUTES } from "@/app/router/routes";
 import { useProyecto } from "@/features/proyectos/hooks/useProyectos";
 import { useDeleteTarea } from "@/features/tareas/hooks/useTareas";
 import {
+  getTareaById,
+  getTaskUsers,
+  removeUserFromTask,
+} from "@/features/tareas/services/tareaService";
+import {
   useDuplicateDetectionLatest,
   useDuplicateDetectionRunResults,
   useDuplicateDetectionRuns,
@@ -155,6 +160,23 @@ export const AgentDuplicateDetectionPage = () => {
     setDeletingTaskId(taskId);
 
     try {
+      const task = await getTareaById(taskId);
+
+      if (task.estadoId === 3) {
+        setDeleteError("No se puede eliminar una tarea completada.");
+        return;
+      }
+
+      const assignments = await getTaskUsers(taskId);
+
+      if (assignments.length > 0) {
+        await Promise.all(
+          assignments.map((assignment) =>
+            removeUserFromTask(taskId, assignment.userId)
+          )
+        );
+      }
+
       await deleteMutation.mutateAsync(taskId);
       setRemovedTaskIds((current) => {
         const next = new Set(current);

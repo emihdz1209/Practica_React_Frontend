@@ -57,7 +57,8 @@ export const toLocalDateTimeInputValue = (date: Date) =>
 
 export const getDefaultFechaLimite = () => {
   const d = new Date();
-  d.setMinutes(d.getMinutes() + 60);
+  d.setDate(d.getDate() + 1);
+  d.setHours(17, 0, 0, 0);
   return toLocalDateTimeInputValue(d);
 };
 

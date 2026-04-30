@@ -50,6 +50,13 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   background: #f5f5f7;
   min-height: 100vh;
@@ -919,6 +926,14 @@ button.DoneButton:hover,
   margin-top: 10px;
   padding: 0 4px 8px;
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  min-width: 0;
+}
+
+.nav-quick-links::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .nav-quick-link {

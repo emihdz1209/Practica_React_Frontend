@@ -17,7 +17,6 @@ import { ROUTES } from "@/app/router/routes";
 import { useEquipos } from "@/features/equipos/hooks/useEquipos";
 import { useProyectos } from "@/features/proyectos/hooks/useProyectos";
 import { useGenerateAiBacklog } from "@/features/agent/hooks/useAiBacklog";
-import { useStartDuplicateDetection } from "@/features/agent/hooks/useAiDuplicateDetection";
 import type { AgentOption } from "@/features/agent/components/AgentOptionsGrid";
 import styles from "@/features/agent/styles/AgentProjectSelectorModal.module.css";
 
@@ -41,7 +40,6 @@ export const AgentProjectSelectorModal = ({
   const navigate = useNavigate();
   const { data: equipos = [], isLoading: isEquiposLoading } = useEquipos();
   const generateBacklogMutation = useGenerateAiBacklog();
-  const duplicateDetectionMutation = useStartDuplicateDetection();
 
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
@@ -94,20 +92,18 @@ export const AgentProjectSelectorModal = ({
     parsedThreshold <= MAX_THRESHOLD;
   const isSubmitting = isGenerateTasksOption
     ? generateBacklogMutation.isPending
-    : duplicateDetectionMutation.isPending;
+    : false;
   const actionLabel = isGenerateTasksOption
     ? isSubmitting
       ? "Generando..."
       : "Generar tareas"
     : isDuplicateAnalysisOption
-      ? isSubmitting
-        ? "Generando..."
-        : "Generar reporte"
+      ? "Iniciar analisis completo"
       : "Proximamente";
   const isActionDisabled = isGenerateTasksOption
     ? !selectedProjectId || !isHoursValid || isSubmitting
     : isDuplicateAnalysisOption
-      ? !selectedProjectId || !isThresholdValid || isSubmitting
+      ? !selectedProjectId || !isThresholdValid
       : true;
 
   const handleGenerateTasks = async () => {
@@ -146,7 +142,7 @@ export const AgentProjectSelectorModal = ({
     }
   };
 
-  const handleGenerateDuplicateReport = async () => {
+  const handleGenerateDuplicateReport = () => {
     setSubmitError(null);
 
     if (!selectedProjectId) {
@@ -161,27 +157,11 @@ export const AgentProjectSelectorModal = ({
       return;
     }
 
-    try {
-      const run = await duplicateDetectionMutation.mutateAsync({
-        projectId: selectedProjectId,
-        threshold: parsedThreshold,
-      });
-
-      onClose();
-      navigate(`${ROUTES.agentDuplicateAnalysis}/${selectedProjectId}?runId=${run.runId}`);
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const apiMessage =
-          typeof error.response?.data?.error === "string"
-            ? error.response?.data?.error
-            : undefined;
-
-        setSubmitError(apiMessage ?? "No se pudo iniciar el analisis. Intenta nuevamente.");
-        return;
-      }
-
-      setSubmitError("No se pudo iniciar el analisis. Intenta nuevamente.");
-    }
+    // Navigate to the page and let it orchestrate the full pipeline
+    onClose();
+    navigate(
+      `${ROUTES.agentDuplicateAnalysis}/${selectedProjectId}?startPipeline=true&threshold=${parsedThreshold}`
+    );
   };
 
   const handlePrimaryAction = () => {
@@ -206,7 +186,7 @@ export const AgentProjectSelectorModal = ({
           {isGenerateTasksOption
             ? "Selecciona un equipo, un proyecto y define las horas disponibles para iniciar la generacion."
             : isDuplicateAnalysisOption
-              ? "Selecciona un equipo, un proyecto y define el threshold de similitud para iniciar el analisis."
+              ? "Selecciona un equipo, un proyecto y define el threshold de similitud para ejecutar los 3 motores de deteccion."
               : "Selecciona un equipo para cargar sus proyectos."}
         </p>
 
@@ -266,7 +246,7 @@ export const AgentProjectSelectorModal = ({
           <TextField
             type="number"
             size="small"
-            label="Horas de trabajo máximas por tarea"
+            label="Horas de trabajo maximas por tarea"
             value={plannedHours}
             onChange={(event) => setPlannedHours(event.target.value)}
             disabled={!selectedProjectId}
@@ -319,7 +299,8 @@ export const AgentProjectSelectorModal = ({
           </Alert>
         ) : isDuplicateAnalysisOption ? (
           <Alert severity="info" className={styles.placeholderAlert}>
-            La IA analizara las tareas del proyecto para detectar posibles duplicados.
+            Se ejecutaran 3 motores de deteccion (LLM, Semantico, Vectorial) para
+            comparar resultados. El proceso incluye la preparacion de embeddings.
             {selectedTeamName ? ` Equipo: ${selectedTeamName}.` : ""}
             {selectedProjectName ? ` Proyecto: ${selectedProjectName}.` : ""}
           </Alert>

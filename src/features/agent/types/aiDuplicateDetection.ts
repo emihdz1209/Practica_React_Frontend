@@ -22,6 +22,7 @@ export interface DuplicateDetectionResult {
   similarityScore: number;
   reason: string;
   createdAt: string;
+  distance?: number;
 }
 
 export interface DuplicateDetectionLatestResponse {
@@ -32,3 +33,29 @@ export interface DuplicateDetectionLatestResponse {
 export interface StartDuplicateDetectionRequest {
   threshold?: number;
 }
+
+export interface EmbeddingStatus {
+  projectId: string;
+  totalTasks: number;
+  semanticEmbeddings: number;
+  vectorEmbeddings: number;
+  readyForVectorSearch: boolean;
+}
+
+export type EngineType = "llm" | "semantic" | "vector";
+
+export interface MultiEngineResults {
+  llm: DuplicateDetectionLatestResponse | null;
+  semantic: DuplicateDetectionLatestResponse | null;
+  vector: DuplicateDetectionLatestResponse | null;
+}
+
+export type PipelineStep =
+  | "idle"
+  | "backfill_semantic"
+  | "waiting_semantic"
+  | "backfill_vector"
+  | "waiting_vector"
+  | "running_engines"
+  | "completed"
+  | "error";

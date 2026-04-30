@@ -1,3 +1,40 @@
+.topBackButton {
+  text-transform: none !important;
+}
+
+.headerContent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.headerTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.buttonIcon {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
+.arrowBackIcon {
+  -webkit-mask-image: url("/arrow-back-up.svg");
+  mask-image: url("/arrow-back-up.svg");
+}
+
 .topRow {
   width: 100%;
   display: flex;
@@ -91,18 +128,26 @@
 
 .loadingState {
   width: 100%;
-  min-height: 140px;
+  min-height: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
   gap: 8px;
+  text-align: center;
 }
 
 .loadingText {
   margin: 0;
-  font-size: 0.85rem;
-  color: var(--text-2);
+  font-size: 0.9rem;
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+.loadingHint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-3);
 }
 
 .emptyState {

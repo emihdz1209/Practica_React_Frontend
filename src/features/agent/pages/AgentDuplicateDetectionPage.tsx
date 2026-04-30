@@ -57,6 +57,8 @@ const statusToneClass = (status?: string) => {
   return styles.statusPending;
 };
 
+const ANALYZING_MESSAGE = "Analizando tareas duplicadas...";
+
 export const AgentDuplicateDetectionPage = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -82,13 +84,11 @@ export const AgentDuplicateDetectionPage = () => {
     isLoading: latestLoading,
     isError: latestError,
     error: latestErrorRaw,
-    refetch: refetchLatest,
   } = useDuplicateDetectionLatest(projectId, selectedRunId ? false : 4000);
 
   const {
     data: runs = [],
     isLoading: runsLoading,
-    refetch: refetchRuns,
   } = useDuplicateDetectionRuns(projectId, selectedRunId ? 4000 : false);
 
   const {
@@ -96,7 +96,6 @@ export const AgentDuplicateDetectionPage = () => {
     isLoading: runResultsLoading,
     isError: runResultsError,
     error: runResultsErrorRaw,
-    refetch: refetchRunResults,
   } = useDuplicateDetectionRunResults(projectId, selectedRunId, selectedRunId ? 4000 : false);
 
   const selectedRun = useMemo(() => {
@@ -136,16 +135,6 @@ export const AgentDuplicateDetectionPage = () => {
     }
 
     setSearchParams({ runId: value });
-  };
-
-  const handleRefresh = () => {
-    if (selectedRunId) {
-      refetchRunResults();
-    } else {
-      refetchLatest();
-    }
-
-    refetchRuns();
   };
 
   const handleDeleteTask = async (taskId: string, label: "A" | "B", title: string) => {
@@ -215,13 +204,27 @@ export const AgentDuplicateDetectionPage = () => {
       <div className="App">
         <NavBar />
         <div className="page-header">
-          <div>
-            <h2>Analisis de tareas duplicadas</h2>
-            <p className="page-subtitle">Selecciona un proyecto valido para continuar.</p>
+          <div className={styles.headerContent}>
+            <div className={styles.headerTopRow}>
+              <Button
+                variant="outlined"
+                onClick={() => navigate(ROUTES.agent)}
+                className={styles.topBackButton}
+                startIcon={(
+                  <span
+                    aria-hidden="true"
+                    className={`${styles.buttonIcon} ${styles.arrowBackIcon}`}
+                  />
+                )}
+              >
+                Volver a Agent
+              </Button>
+            </div>
+            <div>
+              <h2>Analisis de tareas duplicadas</h2>
+              <p className="page-subtitle">Selecciona un proyecto valido para continuar.</p>
+            </div>
           </div>
-          <Button className="AddButton" onClick={() => navigate(ROUTES.agent)}>
-            Volver a Agent
-          </Button>
         </div>
         <Alert severity="warning">No se encontro el proyecto seleccionado.</Alert>
       </div>
@@ -233,15 +236,29 @@ export const AgentDuplicateDetectionPage = () => {
       <NavBar />
 
       <div className="page-header">
-        <div>
-          <h2>Analisis de tareas duplicadas</h2>
-          <p className="page-subtitle">
-            Resultados del analisis semantico realizado por IA.
-          </p>
+        <div className={styles.headerContent}>
+          <div className={styles.headerTopRow}>
+            <Button
+              variant="outlined"
+              onClick={() => navigate(ROUTES.agent)}
+              className={styles.topBackButton}
+              startIcon={(
+                <span
+                  aria-hidden="true"
+                  className={`${styles.buttonIcon} ${styles.arrowBackIcon}`}
+                />
+              )}
+            >
+              Volver a Agent
+            </Button>
+          </div>
+          <div>
+            <h2>Analisis de tareas duplicadas</h2>
+            <p className="page-subtitle">
+              Resultados del analisis semantico realizado por IA.
+            </p>
+          </div>
         </div>
-        <Button variant="outlined" onClick={() => navigate(ROUTES.agent)}>
-          Volver a Agent
-        </Button>
       </div>
 
       <div className={styles.topRow}>
@@ -263,10 +280,6 @@ export const AgentDuplicateDetectionPage = () => {
             ))}
           </Select>
         </FormControl>
-
-        <Button size="small" onClick={handleRefresh} disabled={isResultsLoading}>
-          Actualizar
-        </Button>
       </div>
 
       {!hasRuns && !runsLoading && !latestLoading ? (
@@ -312,7 +325,13 @@ export const AgentDuplicateDetectionPage = () => {
           </div>
 
           {selectedRun?.status === "PENDING" && (
-            <Alert severity="info">Analizando tareas duplicadas...</Alert>
+            <div className={styles.loadingState}>
+              <CircularProgress size={28} />
+              <p className={styles.loadingText}>{ANALYZING_MESSAGE}</p>
+              <p className={styles.loadingHint}>
+                Esto puede tardar unos segundos. Mantente en esta pantalla.
+              </p>
+            </div>
           )}
           {selectedRun?.status === "FAILED" && (
             <Alert severity="error">

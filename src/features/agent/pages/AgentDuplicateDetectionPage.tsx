@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import {
@@ -58,13 +58,18 @@ const statusToneClass = (status?: string) => {
 };
 
 const ANALYZING_MESSAGE = "Analizando tareas duplicadas...";
+const asArray = (value: unknown): any[] => (Array.isArray(value) ? value : []);
 
 export const AgentDuplicateDetectionPage = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedRunId, setSelectedRunId] = useState(
-    searchParams.get("runId") ?? ""
+  const [selectedRunIds, setSelectedRunIds] = useState<Record<string, string>>(
+    () => ({
+      "duplicate-detection": searchParams.get("runId") ?? "",
+      "semantic-duplicate-detection": "",
+      "vector-duplicate-detection": "",
+    })
   );
   const [removedTaskIds, setRemovedTaskIds] = useState<Set<string>>(
     () => new Set()
@@ -73,68 +78,103 @@ export const AgentDuplicateDetectionPage = () => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
-    setSelectedRunId(searchParams.get("runId") ?? "");
+    setSelectedRunIds((prev) => ({
+      ...prev,
+      ["duplicate-detection"]: searchParams.get("runId") ?? "",
+    }));
   }, [searchParams]);
 
   const { data: project } = useProyecto(projectId);
   const deleteMutation = useDeleteTarea(projectId);
 
-  const {
-    data: latestData,
-    isLoading: latestLoading,
-    isError: latestError,
-    error: latestErrorRaw,
-  } = useDuplicateDetectionLatest(projectId, selectedRunId ? false : 4000);
+  const methods = [
+    { key: "duplicate-detection", title: "AI Duplicate Detection" },
+    { key: "semantic-duplicate-detection", title: "AI Semantic Duplicate Detection" },
+    { key: "vector-duplicate-detection", title: "Oracle Vector Duplicate Detection" },
+  ];
 
-  const {
-    data: runs = [],
-    isLoading: runsLoading,
-  } = useDuplicateDetectionRuns(projectId, selectedRunId ? 4000 : false);
+  const queries = methods.map((m) => {
+    const selectedId = selectedRunIds[m.key];
 
-  const {
-    data: runResults = [],
-    isLoading: runResultsLoading,
-    isError: runResultsError,
-    error: runResultsErrorRaw,
-  } = useDuplicateDetectionRunResults(projectId, selectedRunId, selectedRunId ? 4000 : false);
-
-  const selectedRun = useMemo(() => {
-    if (!selectedRunId) {
-      return latestData?.run ?? runs[0];
-    }
-
-    return (
-      runs.find((run) => run.runId === selectedRunId) ??
-      (latestData?.run?.runId === selectedRunId ? latestData.run : undefined)
+    const latestQ = useDuplicateDetectionLatest(
+      projectId,
+      selectedId ? false : 4000,
+      m.key
     );
-  }, [latestData, runs, selectedRunId]);
 
-  const results = selectedRunId ? runResults : latestData?.results ?? [];
-
-  const visibleResults = useMemo(() => {
-    if (removedTaskIds.size === 0) return results;
-
-    return results.filter(
-      (result) =>
-        !removedTaskIds.has(normalizeId(result.taskAId)) &&
-        !removedTaskIds.has(normalizeId(result.taskBId))
+    const runsQ = useDuplicateDetectionRuns(
+      projectId,
+      selectedId ? 4000 : false,
+      m.key
     );
-  }, [removedTaskIds, results]);
 
-  const hasRuns = runs.length > 0 || Boolean(latestData?.run);
-  const isResultsLoading = selectedRunId ? runResultsLoading : latestLoading;
-  const isResultsError = selectedRunId ? runResultsError : latestError;
-  const resultsError = selectedRunId ? runResultsErrorRaw : latestErrorRaw;
+    const resultsQ = useDuplicateDetectionRunResults(
+      projectId,
+      selectedId,
+      selectedId ? 4000 : false,
+      m.key
+    );
 
-  const handleRunChange = (value: string) => {
-    setSelectedRunId(value);
+    return { method: m, latestQ, runsQ, resultsQ };
+  });
 
-    if (!value) {
-      setSearchParams({});
-      return;
+  const selectedRunsComputed = queries.map(({ method, latestQ, runsQ, resultsQ }) => {
+    const selectedId = selectedRunIds[method.key];
+
+    const runs = asArray(runsQ.data) as DuplicateDetectionRun[];
+    const latestData = latestQ.data;
+
+    const selectedRun = !selectedId
+      ? latestData?.run ?? runs[0]
+      : runs.find((r) => r.runId === selectedId) ??
+        (latestData?.run?.runId === selectedId ? latestData.run : undefined);
+
+    const results = selectedId
+      ? asArray(resultsQ.data)
+      : asArray(latestData?.results);
+
+    const visibleResults = removedTaskIds.size === 0
+      ? results
+      : results.filter(
+          (result) =>
+            !removedTaskIds.has(normalizeId(result.taskAId)) &&
+            !removedTaskIds.has(normalizeId(result.taskBId))
+        );
+
+    return {
+      method: method.key,
+      title: method.title,
+      latestData,
+      runs: runs,
+      selectedRun,
+      results,
+      visibleResults,
+      isLoading: selectedId ? resultsQ.isLoading : latestQ.isLoading,
+      isError: selectedId ? resultsQ.isError : latestQ.isError,
+      error: selectedId ? resultsQ.error : latestQ.error,
+    };
+  });
+
+  const hasAnyRuns = selectedRunsComputed.some(
+    (col) => col.runs.length > 0 || Boolean(col.latestData?.run)
+  );
+
+  const anyLoading = queries.some(
+    ({ latestQ, runsQ, resultsQ }) => latestQ.isLoading || runsQ.isLoading || resultsQ.isLoading
+  );
+
+  const handleRunChange = (methodKey: string, value: string) => {
+    setSelectedRunIds((prev) => ({ ...prev, [methodKey]: value }));
+
+    if (methodKey === "duplicate-detection") {
+      // keep legacy URL param for the first column
+      if (!value) {
+        setSearchParams({});
+        return;
+      }
+
+      setSearchParams({ runId: value });
     }
-
-    setSearchParams({ runId: value });
   };
 
   const handleDeleteTask = async (taskId: string, label: "A" | "B", title: string) => {
@@ -261,110 +301,115 @@ export const AgentDuplicateDetectionPage = () => {
         </div>
       </div>
 
-      <div className={styles.topRow}>
-        <FormControl size="small" className={styles.runSelector} disabled={runsLoading}>
-          <InputLabel id="duplicate-run-select-label">Ejecucion</InputLabel>
-          <Select
-            labelId="duplicate-run-select-label"
-            value={selectedRunId}
-            label="Ejecucion"
-            onChange={(event) => handleRunChange(event.target.value as string)}
-          >
-            <MenuItem value="">
-              <em>Ultima ejecucion</em>
-            </MenuItem>
-            {runs.map((run) => (
-              <MenuItem key={run.runId} value={run.runId}>
-                {formatRunLabel(run)}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </div>
-
-      {!hasRuns && !runsLoading && !latestLoading ? (
+      {!hasAnyRuns && !anyLoading ? (
         <Alert severity="info">
           Aun no hay ejecuciones de analisis para este proyecto. Inicia una desde Agent.
         </Alert>
       ) : (
         <>
-          <div className={styles.summaryGrid}>
-            <div className={styles.summaryCard}>
-              <span className={styles.summaryLabel}>Proyecto</span>
-              <span className={styles.summaryValue}>
-                {project?.nombre ?? "Proyecto seleccionado"}
-              </span>
-            </div>
-            <div className={styles.summaryCard}>
-              <span className={styles.summaryLabel}>Threshold</span>
-              <span className={styles.summaryValue}>
-                {formatThreshold(selectedRun?.threshold)}
-              </span>
-              <span className={styles.summaryMeta}>Umbral de similitud</span>
-            </div>
-            <div className={styles.summaryCard}>
-              <span className={styles.summaryLabel}>Tareas analizadas</span>
-              <span className={styles.summaryValue}>
-                {selectedRun?.tasksAnalyzed ?? "—"}
-              </span>
-              <span className={styles.summaryMeta}>
-                {formatDateTime(selectedRun?.createdAt)}
-              </span>
-            </div>
-            <div className={styles.summaryCard}>
-              <span className={styles.summaryLabel}>Estado</span>
-              <span className={`${styles.statusPill} ${statusToneClass(selectedRun?.status)}`}>
-                {selectedRun?.status ?? "PENDING"}
-              </span>
-              <span className={styles.summaryMeta}>
-                {selectedRun?.completedAt
-                  ? `Finalizado: ${formatDateTime(selectedRun.completedAt)}`
-                  : "En proceso"}
-              </span>
-            </div>
+          <div className={styles.columnsContainer}>
+            {selectedRunsComputed.map((col) => (
+              <div key={col.method} className={styles.columnCard}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                  <h3 style={{ margin: 0 }}>{col.title}</h3>
+                  <FormControl size="small" className={styles.runSelector} disabled={col.runs.length === 0 && !col.latestData}>
+                    <InputLabel id={`run-select-${col.method}`}>Ejecucion</InputLabel>
+                    <Select
+                      labelId={`run-select-${col.method}`}
+                      value={selectedRunIds[col.method] ?? ""}
+                      label="Ejecucion"
+                      onChange={(e) => handleRunChange(col.method, e.target.value as string)}
+                    >
+                      <MenuItem value="">
+                        <em>Ultima ejecucion</em>
+                      </MenuItem>
+                      {col.runs.map((run) => (
+                        <MenuItem key={run.runId} value={run.runId}>
+                          {formatRunLabel(run)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </div>
+
+                <div className={styles.summaryGrid}>
+                  <div className={styles.summaryCard}>
+                    <span className={styles.summaryLabel}>Proyecto</span>
+                    <span className={styles.summaryValue}>
+                      {project?.nombre ?? "Proyecto seleccionado"}
+                    </span>
+                  </div>
+                  <div className={styles.summaryCard}>
+                    <span className={styles.summaryLabel}>Threshold</span>
+                    <span className={styles.summaryValue}>
+                      {formatThreshold(col.selectedRun?.threshold)}
+                    </span>
+                    <span className={styles.summaryMeta}>Umbral de similitud</span>
+                  </div>
+                  <div className={styles.summaryCard}>
+                    <span className={styles.summaryLabel}>Tareas analizadas</span>
+                    <span className={styles.summaryValue}>
+                      {col.selectedRun?.tasksAnalyzed ?? "—"}
+                    </span>
+                    <span className={styles.summaryMeta}>
+                      {formatDateTime(col.selectedRun?.createdAt)}
+                    </span>
+                  </div>
+                  <div className={styles.summaryCard}>
+                    <span className={styles.summaryLabel}>Estado</span>
+                    <span className={`${styles.statusPill} ${statusToneClass(col.selectedRun?.status)}`}>
+                      {col.selectedRun?.status ?? "PENDING"}
+                    </span>
+                    <span className={styles.summaryMeta}>
+                      {col.selectedRun?.completedAt
+                        ? `Finalizado: ${formatDateTime(col.selectedRun.completedAt)}`
+                        : "En proceso"}
+                    </span>
+                  </div>
+                </div>
+
+                {col.selectedRun?.status === "PENDING" && (
+                  <div className={styles.loadingState}>
+                    <CircularProgress size={28} />
+                    <p className={styles.loadingText}>{ANALYZING_MESSAGE}</p>
+                    <p className={styles.loadingHint}>
+                      Esto puede tardar unos segundos. Mantente en esta pantalla.
+                    </p>
+                  </div>
+                )}
+                {col.selectedRun?.status === "FAILED" && (
+                  <Alert severity="error">
+                    {col.selectedRun.errorMessage || "La deteccion fallo. Intenta nuevamente."}
+                  </Alert>
+                )}
+                {deleteError && <Alert severity="error">{deleteError}</Alert>}
+
+                <div className={styles.resultsHeader}>
+                  <span className="section-label">Posibles duplicados · {col.visibleResults.length}</span>
+                </div>
+
+                {col.isLoading ? (
+                  <div className={styles.loadingState}>
+                    <CircularProgress size={26} />
+                    <p className={styles.loadingText}>Cargando resultados...</p>
+                  </div>
+                ) : col.isError ? (
+                  <Alert severity="error">
+                    {axios.isAxiosError(col.error) &&
+                    typeof col.error.response?.data?.error === "string"
+                      ? col.error.response?.data?.error
+                      : "No se pudieron cargar los resultados."}
+                  </Alert>
+                ) : (
+                  <AgentDuplicateDetectionResultsTable
+                    results={col.visibleResults}
+                    deletingTaskId={deletingTaskId}
+                    onDeleteTask={handleDeleteTask}
+                  />
+                )}
+              </div>
+            ))}
           </div>
-
-          {selectedRun?.status === "PENDING" && (
-            <div className={styles.loadingState}>
-              <CircularProgress size={28} />
-              <p className={styles.loadingText}>{ANALYZING_MESSAGE}</p>
-              <p className={styles.loadingHint}>
-                Esto puede tardar unos segundos. Mantente en esta pantalla.
-              </p>
-            </div>
-          )}
-          {selectedRun?.status === "FAILED" && (
-            <Alert severity="error">
-              {selectedRun.errorMessage || "La deteccion fallo. Intenta nuevamente."}
-            </Alert>
-          )}
-          {deleteError && <Alert severity="error">{deleteError}</Alert>}
-
-          <div className={styles.resultsHeader}>
-            <span className="section-label">
-              Posibles duplicados · {visibleResults.length}
-            </span>
-          </div>
-
-          {isResultsLoading ? (
-            <div className={styles.loadingState}>
-              <CircularProgress size={26} />
-              <p className={styles.loadingText}>Cargando resultados...</p>
-            </div>
-          ) : isResultsError ? (
-            <Alert severity="error">
-              {axios.isAxiosError(resultsError) &&
-              typeof resultsError.response?.data?.error === "string"
-                ? resultsError.response?.data?.error
-                : "No se pudieron cargar los resultados."}
-            </Alert>
-          ) : (
-            <AgentDuplicateDetectionResultsTable
-              results={visibleResults}
-              deletingTaskId={deletingTaskId}
-              onDeleteTask={handleDeleteTask}
-            />
-          )}
         </>
       )}
       <AppModal

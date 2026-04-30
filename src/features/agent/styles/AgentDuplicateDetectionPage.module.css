@@ -56,6 +56,24 @@
   margin-bottom: 16px;
 }
 
+.columnsContainer {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.columnCard {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 12px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .summaryCard {
   border: 1px solid var(--border);
   border-radius: var(--r-md);

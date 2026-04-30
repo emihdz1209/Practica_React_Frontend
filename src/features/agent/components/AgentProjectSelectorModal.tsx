@@ -17,7 +17,6 @@ import { ROUTES } from "@/app/router/routes";
 import { useEquipos } from "@/features/equipos/hooks/useEquipos";
 import { useProyectos } from "@/features/proyectos/hooks/useProyectos";
 import { useGenerateAiBacklog } from "@/features/agent/hooks/useAiBacklog";
-import { useStartDuplicateDetection } from "@/features/agent/hooks/useAiDuplicateDetection";
 import type { AgentOption } from "@/features/agent/components/AgentOptionsGrid";
 import styles from "@/features/agent/styles/AgentProjectSelectorModal.module.css";
 
@@ -33,13 +32,6 @@ const DEFAULT_THRESHOLD = "0.88";
 const MIN_THRESHOLD = 0;
 const MAX_THRESHOLD = 1;
 
-const DUPLICATE_METHODS = [
-  { value: "all", label: "Los 3 en paralelo" },
-  { value: "duplicate-detection", label: "Tradicional" },
-  { value: "semantic-duplicate-detection", label: "Semántico" },
-  { value: "vector-duplicate-detection", label: "Vectorial Oracle" },
-];
-
 export const AgentProjectSelectorModal = ({
   open,
   onClose,
@@ -48,15 +40,11 @@ export const AgentProjectSelectorModal = ({
   const navigate = useNavigate();
   const { data: equipos = [], isLoading: isEquiposLoading } = useEquipos();
   const generateBacklogMutation = useGenerateAiBacklog();
-  const traditionalDuplicateDetectionMutation = useStartDuplicateDetection("duplicate-detection");
-  const semanticDuplicateDetectionMutation = useStartDuplicateDetection("semantic-duplicate-detection");
-  const vectorDuplicateDetectionMutation = useStartDuplicateDetection("vector-duplicate-detection");
 
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [plannedHours, setPlannedHours] = useState(DEFAULT_HOURS);
   const [similarityThreshold, setSimilarityThreshold] = useState(DEFAULT_THRESHOLD);
-  const [duplicateMethod, setDuplicateMethod] = useState(DUPLICATE_METHODS[0].value);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { data: proyectos = [], isLoading: isProyectosLoading } = useProyectos(
@@ -73,24 +61,12 @@ export const AgentProjectSelectorModal = ({
       setSelectedProjectId("");
       setPlannedHours(DEFAULT_HOURS);
       setSimilarityThreshold(DEFAULT_THRESHOLD);
-      setDuplicateMethod(DUPLICATE_METHODS[0].value);
       setSubmitError(null);
     }
   }, [open, selectedOption?.id]);
 
   const isGenerateTasksOption = selectedOption?.id === "generate-tasks";
   const isDuplicateAnalysisOption = selectedOption?.id === "duplicate-task-analysis";
-
-  const isRunningAllMethods = duplicateMethod === "all";
-  const isSubmittingDuplicateAnalysis = isRunningAllMethods
-    ? traditionalDuplicateDetectionMutation.isPending ||
-      semanticDuplicateDetectionMutation.isPending ||
-      vectorDuplicateDetectionMutation.isPending
-    : {
-        "duplicate-detection": traditionalDuplicateDetectionMutation.isPending,
-        "semantic-duplicate-detection": semanticDuplicateDetectionMutation.isPending,
-        "vector-duplicate-detection": vectorDuplicateDetectionMutation.isPending,
-      }[duplicateMethod] ?? false;
 
   const selectedTeamName = useMemo(
     () => equipos.find((equipo) => equipo.teamId === selectedTeamId)?.nombre ?? "",
@@ -116,22 +92,18 @@ export const AgentProjectSelectorModal = ({
     parsedThreshold <= MAX_THRESHOLD;
   const isSubmitting = isGenerateTasksOption
     ? generateBacklogMutation.isPending
-    : isSubmittingDuplicateAnalysis;
+    : false;
   const actionLabel = isGenerateTasksOption
     ? isSubmitting
       ? "Generando..."
       : "Generar tareas"
     : isDuplicateAnalysisOption
-      ? isSubmittingDuplicateAnalysis
-        ? "Generando..."
-        : duplicateMethod === "all"
-          ? "Generar los 3 reportes"
-          : "Generar reporte"
+      ? "Iniciar analisis completo"
       : "Proximamente";
   const isActionDisabled = isGenerateTasksOption
     ? !selectedProjectId || !isHoursValid || isSubmitting
     : isDuplicateAnalysisOption
-      ? !selectedProjectId || !isThresholdValid || isSubmittingDuplicateAnalysis
+      ? !selectedProjectId || !isThresholdValid
       : true;
 
   const handleGenerateTasks = async () => {
@@ -170,7 +142,7 @@ export const AgentProjectSelectorModal = ({
     }
   };
 
-  const handleGenerateDuplicateReport = async () => {
+  const handleGenerateDuplicateReport = () => {
     setSubmitError(null);
 
     if (!selectedProjectId) {
@@ -185,62 +157,11 @@ export const AgentProjectSelectorModal = ({
       return;
     }
 
-    try {
-      if (duplicateMethod === "all") {
-        await Promise.all([
-          traditionalDuplicateDetectionMutation.mutateAsync({
-            projectId: selectedProjectId,
-            threshold: parsedThreshold,
-          }),
-          semanticDuplicateDetectionMutation.mutateAsync({
-            projectId: selectedProjectId,
-            threshold: parsedThreshold,
-          }),
-          vectorDuplicateDetectionMutation.mutateAsync({
-            projectId: selectedProjectId,
-            threshold: parsedThreshold,
-          }),
-        ]);
-      } else if (duplicateMethod === "semantic-duplicate-detection") {
-        await semanticDuplicateDetectionMutation.mutateAsync({
-          projectId: selectedProjectId,
-          threshold: parsedThreshold,
-        });
-      } else if (duplicateMethod === "vector-duplicate-detection") {
-        await vectorDuplicateDetectionMutation.mutateAsync({
-          projectId: selectedProjectId,
-          threshold: parsedThreshold,
-        });
-      } else {
-        await traditionalDuplicateDetectionMutation.mutateAsync({
-          projectId: selectedProjectId,
-          threshold: parsedThreshold,
-        });
-      }
-
-      onClose();
-      navigate(`${ROUTES.agentDuplicateAnalysis}/${selectedProjectId}`);
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const apiMessage =
-          typeof error.response?.data?.error === "string"
-            ? error.response?.data?.error
-            : undefined;
-
-        // Check for specific error about task embeddings
-        if (apiMessage?.toLowerCase().includes("embedding")) {
-          setSubmitError(
-            "El análisis vectorial requiere embeddings. Contacta al administrador para ejecutar el backfill de embeddings del proyecto primero: POST /api/projects/{projectId}/ai/task-embeddings/backfill"
-          );
-          return;
-        }
-
-        setSubmitError(apiMessage ?? "No se pudo iniciar el analisis. Intenta nuevamente.");
-        return;
-      }
-
-      setSubmitError("No se pudo iniciar el analisis. Intenta nuevamente.");
-    }
+    // Navigate to the page and let it orchestrate the full pipeline
+    onClose();
+    navigate(
+      `${ROUTES.agentDuplicateAnalysis}/${selectedProjectId}?startPipeline=true&threshold=${parsedThreshold}`
+    );
   };
 
   const handlePrimaryAction = () => {
@@ -265,7 +186,7 @@ export const AgentProjectSelectorModal = ({
           {isGenerateTasksOption
             ? "Selecciona un equipo, un proyecto y define las horas disponibles para iniciar la generacion."
             : isDuplicateAnalysisOption
-              ? "Selecciona un equipo, un proyecto y define el threshold de similitud para iniciar el analisis."
+              ? "Selecciona un equipo, un proyecto y define el threshold de similitud para ejecutar los 3 motores de deteccion."
               : "Selecciona un equipo para cargar sus proyectos."}
         </p>
 
@@ -325,7 +246,7 @@ export const AgentProjectSelectorModal = ({
           <TextField
             type="number"
             size="small"
-            label="Horas de trabajo máximas por tarea"
+            label="Horas de trabajo maximas por tarea"
             value={plannedHours}
             onChange={(event) => setPlannedHours(event.target.value)}
             disabled={!selectedProjectId}
@@ -342,22 +263,6 @@ export const AgentProjectSelectorModal = ({
 
         {isDuplicateAnalysisOption && (
           <div>
-            <FormControl size="small" fullWidth>
-              <InputLabel id="agent-duplicate-method-label">Metodo</InputLabel>
-              <Select
-                labelId="agent-duplicate-method-label"
-                value={duplicateMethod}
-                label="Metodo"
-                onChange={(event) => setDuplicateMethod(event.target.value as string)}
-              >
-                {DUPLICATE_METHODS.map((method) => (
-                  <MenuItem key={method.value} value={method.value}>
-                    {method.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <div style={{ height: 12 }} />
             <TextField
               type="number"
               size="small"
@@ -394,7 +299,8 @@ export const AgentProjectSelectorModal = ({
           </Alert>
         ) : isDuplicateAnalysisOption ? (
           <Alert severity="info" className={styles.placeholderAlert}>
-            La IA analizara las tareas del proyecto para detectar posibles duplicados.
+            Se ejecutaran 3 motores de deteccion (LLM, Semantico, Vectorial) para
+            comparar resultados. El proceso incluye la preparacion de embeddings.
             {selectedTeamName ? ` Equipo: ${selectedTeamName}.` : ""}
             {selectedProjectName ? ` Proyecto: ${selectedProjectName}.` : ""}
           </Alert>

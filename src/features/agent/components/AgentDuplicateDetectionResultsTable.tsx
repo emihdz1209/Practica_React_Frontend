@@ -5,6 +5,7 @@ interface AgentDuplicateDetectionResultsTableProps {
   results: DuplicateDetectionResult[];
   deletingTaskId: string | null;
   onDeleteTask: (taskId: string, label: "A" | "B", title: string) => void;
+  showDistance?: boolean;
 }
 
 const formatSimilarity = (score: number) => `${Math.round(score * 100)}%`;
@@ -19,6 +20,7 @@ export const AgentDuplicateDetectionResultsTable = ({
   results,
   deletingTaskId,
   onDeleteTask,
+  showDistance = false,
 }: AgentDuplicateDetectionResultsTableProps) => {
   if (results.length === 0) {
     return <p className={styles.emptyState}>No se encontraron duplicados en esta ejecucion.</p>;
@@ -31,6 +33,7 @@ export const AgentDuplicateDetectionResultsTable = ({
           <th>Tarea A</th>
           <th>Tarea B</th>
           <th>Similitud</th>
+          {showDistance && <th>Distancia</th>}
           <th>Motivo</th>
           <th>Eliminar</th>
         </tr>
@@ -53,6 +56,13 @@ export const AgentDuplicateDetectionResultsTable = ({
                 {formatSimilarity(result.similarityScore)}
               </span>
             </td>
+            {showDistance && (
+              <td>
+                <span className={styles.distanceValue}>
+                  {result.distance != null ? result.distance.toFixed(4) : "—"}
+                </span>
+              </td>
+            )}
             <td>
               <div className={styles.reasonText}>{result.reason}</div>
             </td>

@@ -1,0 +1,65 @@
+name: Build frontend and sync to backend
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  sync-frontend:
+    name: Build and copy frontend into backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout frontend repository
+        uses: actions/checkout@v4
+        with:
+          path: frontend
+
+      - name: Checkout backend repository
+        uses: actions/checkout@v4
+        with:
+          repository: Clay2605293/oracle-java-bot-backend
+          token: ${{ secrets.BACKEND_REPO_TOKEN }}
+          path: backend
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Clean backend static folder
+        run: |
+          rm -rf backend/src/main/resources/static/*
+          mkdir -p backend/src/main/resources/static
+
+      - name: Copy frontend build into backend static folder
+        run: |
+          cp -r frontend/dist/* backend/src/main/resources/static/
+
+      - name: Commit and push frontend build to backend
+        working-directory: backend
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add src/main/resources/static
+
+          if git diff --cached --quiet; then
+            echo "No frontend changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Update embedded frontend build"
+          git push origin main

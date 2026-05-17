@@ -42,20 +42,16 @@ export interface EmbeddingStatus {
   readyForVectorSearch: boolean;
 }
 
-export type EngineType = "llm" | "semantic" | "vector";
+export type EngineType = "vector";
 
 export interface MultiEngineResults {
-  llm: DuplicateDetectionLatestResponse | null;
-  semantic: DuplicateDetectionLatestResponse | null;
   vector: DuplicateDetectionLatestResponse | null;
 }
 
 export type PipelineStep =
   | "idle"
-  | "backfill_semantic"
-  | "waiting_semantic"
   | "backfill_vector"
   | "waiting_vector"
-  | "running_engines"
+  | "running_vector"
   | "completed"
   | "error";

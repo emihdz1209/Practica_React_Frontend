@@ -27,8 +27,9 @@ const ensureHyphenatedUuid = (id: string) => {
 const normalizeId = (value: string) => ensureHyphenatedUuid(value);
 
 const resolveMethodSegment = (methodSegment: string) => {
-  if (methodSegment === "semantic-duplicate-detection") return "duplicate-detection/semantic";
-  if (methodSegment === "vector-duplicate-detection") return "duplicate-detection/vector";
+  if (methodSegment === "vector-duplicate-detection") {
+    return "duplicate-detection/vector";
+  }
   return methodSegment;
 };
 

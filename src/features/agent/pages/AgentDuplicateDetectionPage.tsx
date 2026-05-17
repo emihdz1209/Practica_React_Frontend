@@ -19,13 +19,8 @@ import {
   removeUserFromTask,
 } from "@/features/tareas/services/tareaService";
 import {
-  backfillTaskEmbeddings,
   backfillVectorEmbeddings,
   getEmbeddingsStatus,
-  startDuplicateDetection,
-  getDuplicateDetectionLatest,
-  startSemanticDuplicateDetection,
-  getSemanticDuplicateDetectionLatest,
   startVectorDuplicateDetection,
   getVectorDuplicateDetectionLatest,
 } from "@/features/agent/services/aiDuplicateDetectionService";
@@ -41,39 +36,25 @@ const normalizeId = (value: string) => value.trim().toLowerCase();
 
 const PIPELINE_LABELS: Record<PipelineStep, string> = {
   idle: "",
-  backfill_semantic: "Generando embeddings semanticos...",
-  waiting_semantic: "Esperando embeddings semanticos...",
   backfill_vector: "Preparando vectores en Oracle...",
   waiting_vector: "Confirmando Oracle Vector Search...",
-  running_engines: "Ejecutando motores de deteccion...",
+  running_vector: "Ejecutando deteccion vectorial...",
   completed: "Comparacion completada.",
   error: "Error en el proceso.",
 };
 
 const PIPELINE_PROGRESS: Record<PipelineStep, number> = {
   idle: 0,
-  backfill_semantic: 10,
-  waiting_semantic: 25,
-  backfill_vector: 40,
-  waiting_vector: 55,
-  running_engines: 70,
+  backfill_vector: 20,
+  waiting_vector: 50,
+  running_vector: 80,
   completed: 100,
   error: 0,
 };
 
-type EngineKey = "llm" | "semantic" | "vector";
+type EngineKey = "vector";
 
 const ENGINE_META: { key: EngineKey; title: string; description: string }[] = [
-  {
-    key: "llm",
-    title: "LLM Directo",
-    description: "Analisis directo con modelo de lenguaje.",
-  },
-  {
-    key: "semantic",
-    title: "Python Embeddings",
-    description: "Comparacion basada en embeddings semanticos.",
-  },
   {
     key: "vector",
     title: "Oracle AI Vector Search",
@@ -82,15 +63,6 @@ const ENGINE_META: { key: EngineKey; title: string; description: string }[] = [
 ];
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function pollForSemanticEmbeddings(projectId: string): Promise<void> {
-  for (;;) {
-    const status = await getEmbeddingsStatus(projectId);
-    if (status.semanticEmbeddings >= status.totalTasks && status.totalTasks > 0)
-      return;
-    await delay(3000);
-  }
-}
 
 async function pollForVectorEmbeddings(projectId: string): Promise<void> {
   for (;;) {
@@ -139,11 +111,7 @@ export const AgentDuplicateDetectionPage = () => {
   const [pipelineError, setPipelineError] = useState<string | null>(null);
   const pipelineRanRef = useRef(false);
 
-  // Results from 3 engines
-  const [llmData, setLlmData] =
-    useState<DuplicateDetectionLatestResponse | null>(null);
-  const [semanticData, setSemanticData] =
-    useState<DuplicateDetectionLatestResponse | null>(null);
+  // Results from vector engine
   const [vectorData, setVectorData] =
     useState<DuplicateDetectionLatestResponse | null>(null);
 
@@ -151,8 +119,6 @@ export const AgentDuplicateDetectionPage = () => {
   const [collapsedEngines, setCollapsedEngines] = useState<
     Record<EngineKey, boolean>
   >({
-    llm: false,
-    semantic: false,
     vector: false,
   });
 
@@ -166,35 +132,21 @@ export const AgentDuplicateDetectionPage = () => {
   const runPipeline = useCallback(
     async (pid: string, th: number) => {
       try {
-        setPipelineStep("backfill_semantic");
-        await backfillTaskEmbeddings(pid);
-
-        setPipelineStep("waiting_semantic");
-        await pollForSemanticEmbeddings(pid);
-
         setPipelineStep("backfill_vector");
         await backfillVectorEmbeddings(pid);
 
         setPipelineStep("waiting_vector");
         await pollForVectorEmbeddings(pid);
 
-        setPipelineStep("running_engines");
+        setPipelineStep("running_vector");
         const payload = { threshold: th };
 
-        await Promise.all([
-          startDuplicateDetection(pid, payload),
-          startSemanticDuplicateDetection(pid, payload),
-          startVectorDuplicateDetection(pid, payload),
-        ]);
+        await startVectorDuplicateDetection(pid, payload);
+        const vectorResult = await pollEngineLatest(
+          getVectorDuplicateDetectionLatest,
+          pid
+        );
 
-        const [llmResult, semanticResult, vectorResult] = await Promise.all([
-          pollEngineLatest(getDuplicateDetectionLatest, pid),
-          pollEngineLatest(getSemanticDuplicateDetectionLatest, pid),
-          pollEngineLatest(getVectorDuplicateDetectionLatest, pid),
-        ]);
-
-        setLlmData(llmResult);
-        setSemanticData(semanticResult);
         setVectorData(vectorResult);
         setPipelineStep("completed");
       } catch (error) {
@@ -229,22 +181,18 @@ export const AgentDuplicateDetectionPage = () => {
   useEffect(() => {
     if (!shouldStartPipeline && projectId && !pipelineRanRef.current) {
       pipelineRanRef.current = true;
-      setPipelineStep("running_engines");
+      setPipelineStep("running_vector");
 
-      Promise.all([
-        getDuplicateDetectionLatest(projectId).catch(() => null),
-        getSemanticDuplicateDetectionLatest(projectId).catch(() => null),
-        getVectorDuplicateDetectionLatest(projectId).catch(() => null),
-      ]).then(([llm, semantic, vector]) => {
-        setLlmData(llm);
-        setSemanticData(semantic);
+      getVectorDuplicateDetectionLatest(projectId)
+        .catch(() => null)
+        .then((vector) => {
         setVectorData(vector);
         setPipelineStep("completed");
       });
     }
   }, [shouldStartPipeline, projectId]);
 
-  // Filter results by removed task IDs — shared across all 3 engines
+  // Filter results by removed task IDs
   const filterResults = useCallback(
     (results: DuplicateDetectionResult[]) => {
       if (removedTaskIds.size === 0) return results;
@@ -257,22 +205,12 @@ export const AgentDuplicateDetectionPage = () => {
     [removedTaskIds]
   );
 
-  const llmResults = useMemo(
-    () => filterResults(llmData?.results ?? []),
-    [filterResults, llmData]
-  );
-  const semanticResults = useMemo(
-    () => filterResults(semanticData?.results ?? []),
-    [filterResults, semanticData]
-  );
   const vectorResults = useMemo(
     () => filterResults(vectorData?.results ?? []),
     [filterResults, vectorData]
   );
 
   const resultsByEngine: Record<EngineKey, DuplicateDetectionResult[]> = {
-    llm: llmResults,
-    semantic: semanticResults,
     vector: vectorResults,
   };
 
@@ -280,8 +218,6 @@ export const AgentDuplicateDetectionPage = () => {
     EngineKey,
     DuplicateDetectionLatestResponse | null
   > = {
-    llm: llmData,
-    semantic: semanticData,
     vector: vectorData,
   };
 
@@ -319,7 +255,7 @@ export const AgentDuplicateDetectionPage = () => {
 
       await deleteMutation.mutateAsync(taskId);
 
-      // Add to removed set — filters from ALL 3 engine lists at once
+      // Add to removed set — filters results immediately
       setRemovedTaskIds((current) => {
         const next = new Set(current);
         next.add(normalizeId(taskId));
@@ -393,11 +329,9 @@ export const AgentDuplicateDetectionPage = () => {
 
   // --- Pipeline step indicators ---
   const pipelineSteps: PipelineStep[] = [
-    "backfill_semantic",
-    "waiting_semantic",
     "backfill_vector",
     "waiting_vector",
-    "running_engines",
+    "running_vector",
   ];
 
   const currentStepIndex = pipelineSteps.indexOf(pipelineStep);
@@ -426,7 +360,7 @@ export const AgentDuplicateDetectionPage = () => {
           <div>
             <h2>Analisis de tareas duplicadas</h2>
             <p className="page-subtitle">
-              Resultados de 3 motores de deteccion de duplicados.
+              Resultados de deteccion vectorial de duplicados.
             </p>
           </div>
         </div>
@@ -515,7 +449,7 @@ export const AgentDuplicateDetectionPage = () => {
         </Alert>
       )}
 
-      {/* 3 engine result panels */}
+      {/* Vector engine result panel */}
       {pipelineStep === "completed" && (
         <div className={styles.enginesContainer}>
           {ENGINE_META.map(({ key, title, description }) => {
@@ -578,7 +512,7 @@ export const AgentDuplicateDetectionPage = () => {
       )}
 
       {/* Loading fallback for direct navigation */}
-      {isPipelineRunning && pipelineStep === "running_engines" && (
+      {isPipelineRunning && pipelineStep === "running_vector" && (
         <div className={styles.loadingState}>
           <CircularProgress size={26} />
           <p className={styles.loadingText}>Cargando resultados...</p>
@@ -598,7 +532,7 @@ export const AgentDuplicateDetectionPage = () => {
             deshacer.
           </p>
           <p className={styles.deleteWarningHint}>
-            La tarea sera eliminada y removida de las 3 listas de resultados.
+            La tarea sera eliminada y removida de los resultados.
           </p>
           <div
             style={{

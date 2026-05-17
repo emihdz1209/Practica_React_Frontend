@@ -1,7 +1,6 @@
 import { apiClient } from "@/shared/api/apiClient";
 import type {
   DuplicateDetectionLatestResponse,
-  DuplicateDetectionResult,
   DuplicateDetectionRun,
   EmbeddingStatus,
   StartDuplicateDetectionRequest,
@@ -27,57 +26,13 @@ const ensureHyphenatedUuid = (id: string) => {
 
 const normalizeId = (value: string) => ensureHyphenatedUuid(value);
 
-export const startDuplicateDetection = async (
-  projectId: string,
-  payload: StartDuplicateDetectionRequest
-): Promise<DuplicateDetectionRun> => {
-  const pid = normalizeId(projectId);
-  const response = await apiClient.post<DuplicateDetectionRun>(
-    `/api/projects/${pid}/ai/duplicate-detection`,
-    payload
-  );
-  return response.data;
-};
-
-export const getDuplicateDetectionLatest = async (
-  projectId: string
-): Promise<DuplicateDetectionLatestResponse> => {
-  const pid = normalizeId(projectId);
-  const response = await apiClient.get<DuplicateDetectionLatestResponse>(
-    `/api/projects/${pid}/ai/duplicate-detection/latest`
-  );
-  return response.data;
-};
-
-export const getDuplicateDetectionRuns = async (
-  projectId: string
-): Promise<DuplicateDetectionRun[]> => {
-  const pid = normalizeId(projectId);
-  const response = await apiClient.get<DuplicateDetectionRun[]>(
-    `/api/projects/${pid}/ai/duplicate-detection/runs`
-  );
-  return response.data;
-};
-
-export const getDuplicateDetectionRunResults = async (
-  projectId: string,
-  runId: string
-): Promise<DuplicateDetectionResult[]> => {
-  const pid = normalizeId(projectId);
-  const rid = normalizeId(runId);
-  const response = await apiClient.get<DuplicateDetectionResult[]>(
-    `/api/projects/${pid}/ai/duplicate-detection/runs/${rid}/results`
-  );
-  return response.data;
-};
-
-// --- Embedding management ---
-
-export const backfillTaskEmbeddings = async (
+export const backfillVectorEmbeddings = async (
   projectId: string
 ): Promise<void> => {
   const pid = normalizeId(projectId);
-  await apiClient.post(`/api/projects/${pid}/ai/task-embeddings/backfill`);
+  await apiClient.post(
+    `/api/projects/${pid}/ai/task-vector-embeddings/backfill`
+  );
 };
 
 export const getEmbeddingsStatus = async (
@@ -89,41 +44,6 @@ export const getEmbeddingsStatus = async (
   );
   return response.data;
 };
-
-export const backfillVectorEmbeddings = async (
-  projectId: string
-): Promise<void> => {
-  const pid = normalizeId(projectId);
-  await apiClient.post(
-    `/api/projects/${pid}/ai/task-vector-embeddings/backfill`
-  );
-};
-
-// --- Semantic duplicate detection (Python embeddings) ---
-
-export const startSemanticDuplicateDetection = async (
-  projectId: string,
-  payload: StartDuplicateDetectionRequest
-): Promise<DuplicateDetectionRun> => {
-  const pid = normalizeId(projectId);
-  const response = await apiClient.post<DuplicateDetectionRun>(
-    `/api/projects/${pid}/ai/duplicate-detection/semantic`,
-    payload
-  );
-  return response.data;
-};
-
-export const getSemanticDuplicateDetectionLatest = async (
-  projectId: string
-): Promise<DuplicateDetectionLatestResponse> => {
-  const pid = normalizeId(projectId);
-  const response = await apiClient.get<DuplicateDetectionLatestResponse>(
-    `/api/projects/${pid}/ai/duplicate-detection/semantic/latest`
-  );
-  return response.data;
-};
-
-// --- Vector duplicate detection (Oracle AI Vector Search) ---
 
 export const startVectorDuplicateDetection = async (
   projectId: string,

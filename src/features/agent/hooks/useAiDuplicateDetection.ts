@@ -6,12 +6,13 @@ import {
   getDuplicateDetectionRunResultsFor,
 } from "@/features/agent/services/duplicateDetectionService";
 import {
-  backfillTaskEmbeddings,
   backfillVectorEmbeddings,
   getEmbeddingsStatus,
 } from "@/features/agent/services/aiDuplicateDetectionService";
 
-export const useStartDuplicateDetection = (method: string = "duplicate-detection") => {
+const VECTOR_METHOD = "vector-duplicate-detection";
+
+export const useStartDuplicateDetection = (method: string = VECTOR_METHOD) => {
   return useMutation({
     mutationFn: ({ projectId, threshold }: { projectId: string; threshold?: number }) =>
       startDuplicateDetectionFor(method, projectId, { threshold }),
@@ -21,7 +22,7 @@ export const useStartDuplicateDetection = (method: string = "duplicate-detection
 export const useDuplicateDetectionLatest = (
   projectId?: string,
   refetchInterval?: number | false,
-  method: string = "duplicate-detection"
+  method: string = VECTOR_METHOD
 ) => {
   return useQuery({
     queryKey: ["duplicateDetection", "latest", method, projectId],
@@ -34,7 +35,7 @@ export const useDuplicateDetectionLatest = (
 export const useDuplicateDetectionRuns = (
   projectId?: string,
   refetchInterval?: number | false,
-  method: string = "duplicate-detection"
+  method: string = VECTOR_METHOD
 ) => {
   return useQuery({
     queryKey: ["duplicateDetection", "runs", method, projectId],
@@ -48,22 +49,13 @@ export const useDuplicateDetectionRunResults = (
   projectId?: string,
   runId?: string,
   refetchInterval?: number | false,
-  method: string = "duplicate-detection"
+  method: string = VECTOR_METHOD
 ) => {
   return useQuery({
     queryKey: ["duplicateDetection", "runResults", method, projectId, runId],
     queryFn: () => getDuplicateDetectionRunResultsFor(method, projectId!, runId!),
     enabled: !!projectId && !!runId,
     refetchInterval,
-  });
-};
-
-// --- Embedding hooks ---
-
-export const useBackfillTaskEmbeddings = () => {
-  return useMutation({
-    mutationFn: ({ projectId }: { projectId: string }) =>
-      backfillTaskEmbeddings(projectId),
   });
 };
 

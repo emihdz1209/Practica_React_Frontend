@@ -65,7 +65,7 @@ export const DashboardPage = () => {
       <div className="page-header">
         <div>
           <h2>Vista General</h2>
-          <span>Prueba Correcta</span>
+          <span>Prueba Incorrecta</span>
 
           <p className="page-subtitle">Resumen del proyecto</p>
         </div>
